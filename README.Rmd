@@ -6,10 +6,12 @@ output: github_document
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
+  echo = T,
+  width = 90,
   comment = "#>",
   fig.path = "README-"
 )
+options(width = 100)
 ```
 
 # entbal - An alternative implementation of entropy balancing weights
