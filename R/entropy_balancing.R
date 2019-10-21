@@ -14,7 +14,6 @@ entbal_fit <- function(C, targets,
   n_targets <- length(M)
 
   loss_func0 <- function(f){
-    # print(f)
     loss <- log(t(Q) %*% exp( - C %*% f )) + t(M) %*% f
     return(loss)
   }
@@ -25,10 +24,7 @@ entbal_fit <- function(C, targets,
     return(grad)
   }
 
-  NOISYC <- C
-
-  f_init <- solve(t(NOISYC) %*% NOISYC) %*% M
-  # f_init <- rep(0, length(M))
+  f_init <- solve(t(C) %*% C) %*% M
 
   opt_val <- optim(par = f_init,
                    fn = loss_func0,
