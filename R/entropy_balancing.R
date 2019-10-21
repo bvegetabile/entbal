@@ -39,6 +39,54 @@ entbal_fit <- function(C, targets,
 
 }
 
+#' Compute optimal balancing weights via entropy balancing
+#'
+#' @param formula Typical R style formula - ex. `TA ~ X1 + X2`
+#' @param data R \code{data.frame} that contains the variables listed in the formula
+#' @param R Binary vector of response indictors
+#' @param estimand Estimand for optimizing the weights towards.  Acceptable values of "ATE", "ATT", "ATC" where ATT takes values of 1 to be the treatment category and 0 to be the control category
+#' @param n_moments The number of moments that are to be matched.  Default to 2
+#' @param max_iters Maximum number of iterations for the BFGS optimization procedure
+#' @param verbose Should the algorithm print progess to screen? Defaults to FALSE
+#' @param optim_method Optimization Method.  Set to 'L-BFGS-B' by deault.  Specify 'BFGS' is there are optimization issues
+#' @return Object that contains the weights obtained from the balancing procedure and parameters from the optimization procedure
+#'
+#' The object that is returned is a list that contains the following entries
+#' \itemize{
+#' \item{ \code{wts} - Optimal weights for the estimand of interest and matched number of moments.}
+#' \item{ \code{untransformed_wts} - Latent value used to contruct the weights.  Typically unneeded.}
+#' \item{ \code{minimum_overall_bal} - Resulting value of the objective function at algorithm termination.}
+#' \item{ \code{convergence} - Convergence code from \code{optim} package for BFGS algorithm.}
+#' \item{ \code{message} - Convergence message from \code{optim} package for BFGS algorithm.}
+#' \item{ \code{n_matched_moments} - Number of moments matched in the optimization.}
+#' \item{ \code{X} - Design matrix used in obtaining balance.}
+#' \item{ \code{TA} - Vector of Treatment Assignments Used.}
+#' }
+#' @examples
+#' # Example 1 - ATE Example
+#' n_obs <- 500
+#' X1 <- rnorm(n_obs)
+#' X2 <- rnorm(n_obs)
+#' p <- pnorm( 0.5 * X1 + 0.5 * X2 )
+#' TA <- rbinom(n_obs, 1, p)
+#' dat <- data.frame(X1 = X1, X2 = X2, TA = TA)
+#' system.time(res <- entbald('TA ~ X1 + X2',
+#'                           data = dat, verbose = T, optim_method = 'BFGS'))
+#' summary(res)
+#'
+#' # Example 2 - ATT Example
+#' dset <- dw99cps1
+#' estwts <- entbal(TA ~ age + education + black + hispanic + married + nodegree + RE74 + RE75,
+#'                       data = dset,
+#'                       n_moments = 3,
+#'                       verbose = 1,
+#'                       estimand = "ATT")
+#' summary(estwts)
+#' dset$wts <- estwts$wts
+#' design <- svydesign(ids=~1, weights=~wts, data = dset)
+#' resp <- svyglm('RE78 ~ TA', design = design)
+#'summary(resp)
+#'
 entbal <- function(formula,
                    data = NULL,
                    R = NULL,
@@ -46,7 +94,6 @@ entbal <- function(formula,
                    n_moments = 3,
                    max_iters = 1000,
                    verbose = FALSE,
-                   lambda = NULL,
                    optim_method = 'L-BFGS-B'){
 
   # Cleaning up user input

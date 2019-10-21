@@ -1,0 +1,48 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "README-"
+)
+```
+
+# entbal - An alternative implementation of entropy balancing weights
+
+The goal of entbal is to create an easy to use implementation of the entropy balancing algorithm outlined in Hainmueller (2012) for applied researchers to use.  
+
+Hainmueller, Jens. "Entropy balancing for causal effects: A multivariate reweighting method to produce balanced samples in observational studies." Political Analysis 20.1 (2012): 25-46.
+
+## Installation
+
+You can install entbal from github with:
+
+```{r gh-installation, eval = FALSE}
+# install.packages("devtools")
+devtools::install_github("bvegetabile/entbal")
+```
+
+## Example
+
+This is a basic example which shows you how to solve a common problem:
+
+```{r example}
+library(entbal)
+library(survey, quietly = T, warn.conflicts = F, verbose = F)
+dset <- dw99cps1
+estwts <- entbal(TA ~ age + education + black + hispanic + married + nodegree + RE74 + RE75,
+                      data = dset,
+                      n_moments = 3,
+                      verbose = 1,
+                      estimand = "ATT")
+summary(estwts)
+dset$wts <- estwts$wts
+design <- svydesign(ids=~1, weights=~wts, data = dset)
+resp <- svyglm('RE78 ~ TA', design = design)
+summary(resp)
+```
