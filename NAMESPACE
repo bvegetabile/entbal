@@ -1,1 +1,17 @@
-exportPattern("^[[:alpha:]]+")
+exportPattern("^[^\\.]")
+
+importFrom(Rcpp, evalCpp)
+#exportPattern("^[[:alpha:]]+")
+
+#-------------------------------------------------------------------------------
+# Added the below line... Ensures RcppParallel works
+# Removes the following error:
+#
+#     Symbol not found: __ZN3tbb4task13note_affinityEt
+#
+# importFrom(RcppParallel, RcppParallelLibs)
+#-------------------------------------------------------------------------------
+
+useDynLib(entbal, .registration=TRUE)
+
+#exportPattern("^[[:alpha:]]+")
