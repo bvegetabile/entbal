@@ -17,8 +17,8 @@ You can install entbal from github with:
 devtools::install_github("bvegetabile/entbal")
 ```
 
-Example of Estimating Entropy Balancing Weights
------------------------------------------------
+Example of Estimating Entropy Balancing Weights - ATT
+-----------------------------------------------------
 
 This is a basic example that shows how to obtain weights on a simple dataset from Dehejia and Wahba (1999).
 
@@ -157,3 +157,97 @@ summary(resp)
     #> Number of Fisher Scoring iterations: 2
 
 We see that the results do not change much and that our point estimate is the same.
+
+Simulated Demo on Estimating the ATE
+------------------------------------
+
+Below is a demonstration of estimating the average treatment effect
+
+``` r
+set.seed(2019)
+
+library(entbal)
+library(survey)
+n_obs <- 2500
+n_sims <- 500
+outro <- matrix(NA, nrow = n_sims, ncol = 4)
+start_time <- Sys.time()
+for(i in 1:n_sims){
+  
+  X1 <- rnorm(n_obs)
+  X2 <- rnorm(n_obs)
+  X3 <- rnorm(n_obs)
+  
+  ps <- plogis(1.5 + 1.2 * X1 - 1.5 * X2 + 0.5 * X3)
+  
+  TA <- rbinom(n_obs, 1, ps)
+  
+  Y1 <- X1^2 + X2^2 + X3^2 + 10 + rnorm(n_obs)
+  Y0 <- -(X1 + X2 + X3) + rnorm(n_obs)
+  
+  Yobs <- TA * Y1 + (1 - TA) * Y0
+  
+  dset <- data.frame('X1' = X1,
+                     'X2' = X2,
+                     'X3' = X3,
+                     'TA' = TA,
+                     'Y' = Yobs)
+  
+  SATE <- mean(Y1-Y0)
+  
+  # Naive Estimate - Only taking group means
+  Naive <- mean(dset$Y[dset$TA == 1]) - mean(dset$Y[dset$TA == 0])
+  
+  # Linear Regression - Controlling for X1, X2, X3, - Complete Case Analysis
+  LR <- lm(Y ~ TA + X1 + X2 + X3, data = dset)
+  
+  # Entropy Balancing ATE
+  wts <- entbal(TA ~ X1 + X2 + X3 ,
+                verbose = 0, n_moments = 2, estimand = 'ATE')
+  dset$wts <- wts$wts
+  design <- svydesign(ids=~1, weights=~wts, data = dset)
+  resp <- svyglm('Y ~ TA', design = design)
+  
+  # Storing outputs
+  outro[i,] <- c(SATE, Naive, coef(LR)[2], coef(resp)[2])
+  if(!(i%%100)) {
+    end_time <- Sys.time()
+    message(
+      paste(i, ' Iters, Time per iter:', 
+            round(difftime(end_time, start_time, units = 'secs'),3),
+            sep = '')
+    )
+    start_time <- Sys.time()
+  }
+}
+```
+
+    #> 100 Iters, Time per iter:3.118
+
+    #> 200 Iters, Time per iter:2.952
+
+    #> 300 Iters, Time per iter:2.971
+
+    #> 400 Iters, Time per iter:2.997
+
+    #> 500 Iters, Time per iter:2.965
+
+``` r
+colnames(outro) <- c('SATE',
+                     'Naive Analysis',
+                     'Linear Regression',
+                     'Entropy Balancing, m = 3')
+
+par(mar=c(5,12,2,2))
+plot(0, ylim = c(0,5), xlim = range(outro - mean(outro[,1])),
+     pch = 19, col = rgb(0,0,0,0),
+     xlab = 'Estimated ATE', ylab = '', axes = F, yaxs='i',
+     main = 'Distribution of Estimates - Centered on Mean SATE')
+lines(c(0,0), c(0, 10), lwd = 3, col = rgb(0,0,0.5,0.5))
+boxplot((outro - mean(outro[,1]))[,4:1], horizontal=T, axes = F, add = T,
+        col = 'gray', pch = 19)
+axis(1); axis(2, las=2, at = 4:1, labels = colnames(outro))
+abline(h = c(3.5,8.5), lwd = 2, col = rgb(0.5,0,0,0.4))
+```
+
+<img src="README-example4-1.png" style="display: block; margin: auto;" />
