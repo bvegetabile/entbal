@@ -3,7 +3,7 @@
 entbal - An alternative implementation of entropy balancing weights
 ===================================================================
 
-The goal of entbal is to create an easy to use implementation of the entropy balancing algorithm outlined in Hainmueller (2012) for applied researchers to use.
+The goal of entbal is to create an easy to use implementation of the entropy balancing algorithm outlined in Hainmueller (2012) for applied researchers to use. **Note that this is a work in progress**
 
 Hainmueller, Jens. "Entropy balancing for causal effects: A multivariate reweighting method to produce balanced samples in observational studies." Political Analysis 20.1 (2012): 25-46.
 
