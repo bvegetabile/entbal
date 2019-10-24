@@ -7,13 +7,15 @@ entbal_fit <- function(C, targets,
                        n_moments = 2,
                        max_iters = 1000,
                        verbose = 0,
-                       optim_method = 'L-BFGS-B'){
+                       optim_method = 'L-BFGS-B',
+                       bal_tol = 0.005){
   n_obs <- nrow(C)
   Q <- rep(1/n_obs, n_obs)
   M <- targets
   n_targets <- length(M)
 
   loss_func0 <- function(f){
+    # print(f)
     loss <- log(t(Q) %*% exp( - C %*% f )) + t(M) %*% f
     return(loss)
   }
@@ -24,15 +26,18 @@ entbal_fit <- function(C, targets,
     return(grad)
   }
 
-  f_init <- solve(t(C) %*% C) %*% M
+  f_init <- solve(t(C) %*% C + diag(ncol(C))) %*% M
 
-  opt_val <- optim(par = f_init,
+  opt_val <- optimr::optimr(par = f_init,
                    fn = loss_func0,
                    gr = grad_func0,
                    method = optim_method,
+                   lower = -250,
+                   upper = 250,
                    control = list(trace = verbose,
                                   maxit = max_iters,
-                                  lmm = 25))
+                                  lmm = 5,
+                                  pgtol = bal_tol))
   return(list(optim_obj = opt_val,
               f = opt_val$par,
               wts = entbal_wts(Q, C, opt_val$par)))
@@ -94,7 +99,8 @@ entbal <- function(formula,
                    n_moments = 3,
                    max_iters = 1000,
                    verbose = FALSE,
-                   optim_method = 'L-BFGS-B'){
+                   optim_method = 'L-BFGS-B',
+                   bal_tol = 0.005){
 
   # Cleaning up user input
   estimand <- toupper(estimand)
@@ -104,15 +110,17 @@ entbal <- function(formula,
   if(!attr(terms(formula, data=data), 'response')) stop('Please supply a treatment variable on the left side of the formula');
 
   # Dropping the intercept term
-  if(attr(terms(formula, data=data), 'intercept')){
-    formula <- update(terms(formula, data=data), . ~ . -1)
-  }
+  # if(attr(terms(formula, data=data), 'intercept')){
+  #   formula <- update(terms(formula, data=data), . ~ . -1)
+  # }
 
   # Collecting the data and making a model.frame object to create the design matrix
   mf <- model.frame(formula, data = data)
 
   ta <- model.response(mf, 'numeric')
   designX <- model.matrix(formula, data=mf)
+
+  NC <- ncol(designX)
 
   n_classes <- length(unique(ta))
   n_obs <- nrow(designX)
@@ -123,7 +131,7 @@ entbal <- function(formula,
   if(!estimand %in% c('ATE', 'ATT', 'ATC')){stop('Invalid estimand: Choose ATE, ATT, or ATC')}
 
   if(estimand == 'ATE'){
-    Xmat <- make_Xmat(designX, n_moments)
+    Xmat <- make_Xmat(designX[,2:NC], n_moments)
     Xmat <- scale(Xmat)
     targets <- apply(Xmat, 2, mean)
 
@@ -135,8 +143,8 @@ entbal <- function(formula,
       XC <- Xmat[ta == 0 & R == 1, ]
     }
 
-    wtsT <- entbal_fit(XT, targets, n_moment, max_iters, verbose, optim_method)
-    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method)
+    wtsT <- entbal_fit(XT, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
+    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
 
     conv_status_treated <- wtsT$optim_obj$convergence
     conv_status_control <- wtsC$optim_obj$convergence
@@ -144,6 +152,10 @@ entbal <- function(formula,
     conv_status <- ifelse(conv_status_treated==0, T, F) & ifelse(conv_status_control==0, T, F)
     conv_messages <- list('treated' = wtsT$optim_obj$message,
                           'control' = wtsC$optim_obj$message)
+
+    opt_obj <- list('treated' = wtsT$optim_obj,
+                    'control' = wtsC$optim_obj)
+
 
     mf$wts <- NA
     if(is.null(R)){
@@ -157,19 +169,21 @@ entbal <- function(formula,
 
 
   } else if (estimand == 'ATT'){
-    Xmat <- make_Xmat(designX, n_moments)
+    Xmat <- make_Xmat(designX[,2:NC], n_moments)
     Xmat <- scale(Xmat)
     XT <- Xmat[ta == 1, ]
     targets <- apply(XT, 2, mean)
 
     XC <- Xmat[ta == 0, ]
 
-    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method)
+    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
 
     conv_status_control <- wtsC$optim_obj$convergence
 
     conv_status <- ifelse(conv_status_control==0, T, F)
     conv_messages <- list('control' = wtsC$optim_obj$message)
+
+    opt_obj <- list('control' = wtsC$optim_obj)
 
     mf$wts <- NA
     mf$wts[ta == 1] <- 1
@@ -184,8 +198,9 @@ entbal <- function(formula,
               'convergence' = conv_status,
               'message' = conv_messages,
               'n_matched_moments' = n_moments,
-              'X' = designX,
-              'TA' = ta)
+              'X' = designX[,2:NC],
+              'TA' = ta,
+              'opt_obj' = opt_obj)
   class(res) <- c(if(n_classes > 2) "entbal_multiclass", "entbal_binary")
   res$estimand <- estimand
   res
