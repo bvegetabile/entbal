@@ -15,7 +15,8 @@ entbal_fit <- function(C, targets,
   n_targets <- length(M)
 
   loss_func0 <- function(f){
-    # print(f)
+    W <- entbal_wts(Q, C, f)
+    print(max(M - t(C) %*% W))
     loss <- log(t(Q) %*% exp( - C %*% f )) + t(M) %*% f
     return(loss)
   }
@@ -28,7 +29,7 @@ entbal_fit <- function(C, targets,
 
   f_init <- solve(t(C) %*% C + diag(ncol(C))) %*% M
 
-  opt_val <- optimr::optimr(par = f_init,
+  opt_val <- optim(par = f_init,
                    fn = loss_func0,
                    gr = grad_func0,
                    method = optim_method,
