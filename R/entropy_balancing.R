@@ -15,8 +15,8 @@ entbal_fit <- function(C, targets,
   n_targets <- length(M)
 
   loss_func0 <- function(f){
-    W <- entbal_wts(Q, C, f)
-    print(max(M - t(C) %*% W))
+    # W <- entbal_wts(Q, C, f)
+    # print(max(M - t(C) %*% W))
     loss <- log(t(Q) %*% exp( - C %*% f )) + t(M) %*% f
     return(loss)
   }
