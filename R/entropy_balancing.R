@@ -199,6 +199,7 @@ entbal <- function(formula,
               'convergence' = conv_status,
               'message' = conv_messages,
               'n_matched_moments' = n_moments,
+              'estimand' = estimand,
               'X' = designX[,2:NC],
               'TA' = ta,
               'opt_obj' = opt_obj)

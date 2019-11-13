@@ -12,9 +12,6 @@ entbal_mc <- function(formula,
 
   # Cleaning up user input
   estimand <- toupper(estimand)
-
-
-
   formula <- formula(formula)
 
   # Checking if the formula has a response
@@ -78,6 +75,7 @@ entbal_mc <- function(formula,
               'convergence' = conv_status,
               'message' = conv_messages,
               'n_matched_moments' = n_moments,
+              'estimand' = estimand,
               'X' = designX[,2:NC],
               'TA' = ta,
               'TA_map' = data.frame('TA_levels' = uniq_ta,
