@@ -60,6 +60,104 @@ summary.entbal_binary <- function(obj, show_unweighted = TRUE, n_digits=2){
 
 }
 
+summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2){
+  estimand <- obj$estimand
+  ta_lvls <- unique(obj$TA)
+  NT <- length(ta_lvls)
+
+  outsum1 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * (NT+1))
+  balsum1 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * NT)
+
+  outsum2 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * (NT+1))
+  balsum2 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * NT)
+
+  orig_N <- rep(NA, NT)
+  esssum <- rep(NA, NT)
+
+  names(orig_N) <- paste("TA:", ta_lvls, sep = '')
+  names(esssum) <- paste("TA:", ta_lvls, sep = '')
+  colnames(outsum1) <- c('Mean', 'SD', paste(c('M:', 'SD:'), rep(ta_lvls,each=2),sep=''))
+  colnames(outsum2) <- c('Mean', 'SD', paste(c('M:', 'SD:'), rep(ta_lvls,each=2),sep=''))
+  colnames(balsum1) <- c(paste(c('M:', 'SD:'), rep(ta_lvls,each=2),sep=''))
+  colnames(balsum2) <- c(paste(c('M:', 'SD:'), rep(ta_lvls,each=2),sep=''))
+  rownames(outsum1) <- colnames(obj$X)
+  rownames(outsum2) <- colnames(obj$X)
+  rownames(balsum1) <- colnames(obj$X)
+  rownames(balsum2) <- colnames(obj$X)
+
+
+  if(estimand == 'ATE'){
+    target_means <- apply(obj$X, 2, mean)
+    target_stddv <- apply(obj$X, 2, sd)
+    outsum1[,1] <- target_means
+    outsum1[,2] <- target_stddv
+    outsum2[,1] <- target_means
+    outsum2[,2] <- target_stddv
+    for(i in 1:NT){
+      ta <- obj$TA == ta_lvls[i]
+      nt <- sum(ta)
+      group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, obj$wts))
+      group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, obj$wts)))
+
+      uw_group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, ta))
+      uw_group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, ta)))
+
+      outsum1[, 2*i + 1] <- uw_group_means
+      outsum1[, 2*i + 2] <- uw_group_stddv
+      balsum1[, 2*i - 1] <- (uw_group_means - target_means) / target_stddv
+      balsum1[, 2*i] <- log(target_stddv) - log(uw_group_stddv)
+
+      outsum2[, 2*i + 1] <- group_means
+      outsum2[, 2*i + 2] <- group_stddv
+      balsum2[, 2*i - 1] <- (group_means - target_means) / target_stddv
+      balsum2[, 2*i] <- log(target_stddv) - log(group_stddv)
+
+      esssum[i] <- group_ESS(obj$wts, ta)
+      orig_N[i] <- nt
+    }
+  }
+
+  if(show_unweighted){
+    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    cat('Unweighted Summary Statistics:\n')
+    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    print(round(outsum1, digits = n_digits))
+  }
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat('Weighted Summary Statistics:\n')
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  print(round(outsum2, digits = n_digits))
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+
+  if(show_unweighted){
+    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    cat('Unweighted Balance Statistics:\n')
+    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    print(round(balsum1, digits = n_digits))
+  }
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat('Weighted Balance Statistics:\n')
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  print(round(balsum2, digits = n_digits))
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat('Original & Effective Sample Sizes:\n')
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  SS <- cbind(orig_N, esssum, esssum/orig_N)
+  colnames(SS) <- c('Orig N', 'ESS', 'Ratio')
+  rownames(SS) <- paste("TA:", ta_lvls, sep = '')
+  print(round(SS, digits = n_digits))
+  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+
+  invisible(list('unweighted_summary' = outsum1,
+                 'unweighted_balstats' = balsum1,
+                 'weighted_summary' = outsum2,
+                 'weighted_balstats' = balsum2,
+                 'weighted_ess' = esssum,
+                 'original_N' = orig_N))
+}
+
 
 
 ks_test <- function(X, TA, wts=rep(1,length(X)), n_pts=1000){
