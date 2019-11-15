@@ -41,19 +41,13 @@ estwts <- entbal(TA ~ age + education + black + hispanic + married + nodegree + 
                  data = dset,
                  n_moments = 3,
                  verbose = 1,
+                 bal_tol = 1e-3,
                  estimand = "ATT")
 ```
 
-    #> iter   10 value -3.307619
-    #> iter   20 value -3.463395
-    #> iter   30 value -3.470933
-    #> iter   40 value -3.485851
-    #> iter   50 value -3.581389
-    #> iter   60 value -3.595018
-    #> iter   70 value -3.611668
-    #> iter   80 value -3.612052
-    #> iter   90 value -3.612056
-    #> final  value -3.612062 
+    #> iter   10 value -3.573880
+    #> iter   20 value -3.608738
+    #> final  value -3.612034 
     #> converged
 
 ``` r
@@ -76,20 +70,32 @@ summary(estwts)
     #> Weighted Balance Statistics:
     #> ------------------------------------------------------------------------------------------
     #>           MeanGroup1 SEGroup1 MeanGroup0 SEGroup0 StdDiffMeans LogRatioSE MaxKS
-    #> age            25.82     7.14      25.82     7.14            0          0  0.07
-    #> education      10.35     2.01      10.35     2.01            0          0  0.04
-    #> black           0.84     0.36       0.84     0.36            0          0  0.00
-    #> hispanic        0.06     0.24       0.06     0.24            0          0  0.00
-    #> married         0.19     0.39       0.19     0.39            0          0  0.00
-    #> nodegree        0.71     0.45       0.71     0.45            0          0  0.00
-    #> RE74         2095.57  4873.40    2095.57  4873.40            0          0  0.16
-    #> RE75         1532.06  3210.54    1532.05  3210.48            0          0  0.10
+    #> age            25.82     7.14      25.81     7.13            0       0.00  0.07
+    #> education      10.35     2.01      10.34     2.00            0       0.00  0.04
+    #> black           0.84     0.36       0.84     0.36            0       0.00  0.00
+    #> hispanic        0.06     0.24       0.06     0.24            0       0.00  0.00
+    #> married         0.19     0.39       0.19     0.39            0       0.00  0.00
+    #> nodegree        0.71     0.45       0.71     0.45            0       0.00  0.00
+    #> RE74         2095.57  4873.40    2101.23  4884.41            0       0.00  0.16
+    #> RE75         1532.06  3210.54    1525.97  3185.25            0       0.01  0.10
     #> ------------------------------------------------------------------------------------------
     #> TA: 1,   Original N = 185
     #>        Weighted ESS = 185
     #> TA: 0,   Original N = 15992
-    #>        Weighted ESS = 116.46
+    #>        Weighted ESS = 116.26
     #> ------------------------------------------------------------------------------------------
+
+### Diagnostic Plots
+
+We can visualize the weighted ECDF as a visual balance diagnostic. We only need to do this for continuous variables as we can see from the summary table that the binary variables are balanced. These should be the columns of estwts$X that are continuous.
+
+``` r
+plot(estwts, which_vars = c(1,2,7,8))
+```
+
+<img src="README-unnamed-chunk-2-1.png" style="display: block; margin: auto;" /><img src="README-unnamed-chunk-2-2.png" style="display: block; margin: auto;" /><img src="README-unnamed-chunk-2-3.png" style="display: block; margin: auto;" /><img src="README-unnamed-chunk-2-4.png" style="display: block; margin: auto;" />
+
+These plots demonstrate very good balance on the empirical distribution.
 
 ### Outcome Modeling
 
@@ -112,12 +118,12 @@ summary(resp)
     #> 
     #> Coefficients:
     #>             Estimate Std. Error t value Pr(>|t|)    
-    #> (Intercept)   4957.0      434.9  11.397   <2e-16 ***
-    #> TA            1392.2      722.5   1.927    0.054 .  
+    #> (Intercept)   4955.3      435.2  11.387   <2e-16 ***
+    #> TA            1393.9      722.6   1.929   0.0538 .  
     #> ---
     #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     #> 
-    #> (Dispersion parameter for gaussian family taken to be 61441391)
+    #> (Dispersion parameter for gaussian family taken to be 61441152)
     #> 
     #> Number of Fisher Scoring iterations: 2
 
@@ -139,20 +145,20 @@ summary(resp)
     #> 
     #> Coefficients:
     #>               Estimate Std. Error t value Pr(>|t|)  
-    #> (Intercept) -2.875e+03  6.055e+03  -0.475   0.6349  
-    #> TA           1.392e+03  7.013e+02   1.985   0.0471 *
+    #> (Intercept) -2.876e+03  6.054e+03  -0.475   0.6348  
+    #> TA           1.393e+03  7.013e+02   1.986   0.0471 *
     #> age          8.299e+01  7.481e+01   1.109   0.2673  
     #> education    6.226e+02  3.574e+02   1.742   0.0815 .
     #> black       -1.147e+03  1.550e+03  -0.740   0.4595  
-    #> hispanic     3.064e+02  2.656e+03   0.115   0.9082  
-    #> married      1.016e+03  1.469e+03   0.692   0.4892  
-    #> nodegree    -3.120e+02  1.828e+03  -0.171   0.8645  
-    #> RE74         4.075e-02  2.450e-01   0.166   0.8679  
-    #> RE75         9.154e-02  1.947e-01   0.470   0.6382  
+    #> hispanic     3.065e+02  2.656e+03   0.115   0.9081  
+    #> married      1.016e+03  1.469e+03   0.692   0.4891  
+    #> nodegree    -3.119e+02  1.828e+03  -0.171   0.8645  
+    #> RE74         4.078e-02  2.450e-01   0.166   0.8678  
+    #> RE75         9.147e-02  1.946e-01   0.470   0.6384  
     #> ---
     #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     #> 
-    #> (Dispersion parameter for gaussian family taken to be 58371674)
+    #> (Dispersion parameter for gaussian family taken to be 58371499)
     #> 
     #> Number of Fisher Scoring iterations: 2
 
@@ -222,15 +228,15 @@ for(i in 1:n_sims){
 }
 ```
 
-    #> 100 Iters, Time per iter:3.118
+    #> 100 Iters, Time per iter:3.407
 
-    #> 200 Iters, Time per iter:2.952
+    #> 200 Iters, Time per iter:3.317
 
-    #> 300 Iters, Time per iter:2.971
+    #> 300 Iters, Time per iter:3.283
 
-    #> 400 Iters, Time per iter:2.997
+    #> 400 Iters, Time per iter:3.367
 
-    #> 500 Iters, Time per iter:2.965
+    #> 500 Iters, Time per iter:3.309
 
 ``` r
 colnames(outro) <- c('SATE',

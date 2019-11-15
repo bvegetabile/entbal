@@ -47,9 +47,21 @@ estwts <- entbal(TA ~ age + education + black + hispanic + married + nodegree + 
                  data = dset,
                  n_moments = 3,
                  verbose = 1,
+                 bal_tol = 1e-3,
                  estimand = "ATT")
 summary(estwts)
 ```
+
+
+### Diagnostic Plots
+
+We can visualize the weighted ECDF as a visual balance diagnostic.  We only need to do this for continuous variables as we can see from the summary table that the binary variables are balanced. These should be the columns of estwts$X that are continuous.  
+
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+plot(estwts, which_vars = c(1,2,7,8))
+```
+
+These plots demonstrate very good balance on the empirical distribution. 
 
 ### Outcome Modeling
 
