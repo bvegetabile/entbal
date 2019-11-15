@@ -8,7 +8,7 @@ entbal_fit <- function(C, targets,
                        max_iters = 1000,
                        verbose = 0,
                        optim_method = 'L-BFGS-B',
-                       bal_tol = 0.005){
+                       bal_tol = 0.0005){
   n_obs <- nrow(C)
   Q <- rep(1/n_obs, n_obs)
   M <- targets
@@ -101,7 +101,8 @@ entbal <- function(formula,
                    max_iters = 1000,
                    verbose = FALSE,
                    optim_method = 'L-BFGS-B',
-                   bal_tol = 0.005){
+                   bal_tol = 0.005,
+                   old_method = T){
 
   # Cleaning up user input
   estimand <- toupper(estimand)
@@ -174,7 +175,6 @@ entbal <- function(formula,
     Xmat <- scale(Xmat)
     XT <- Xmat[ta == 1, ]
     targets <- apply(XT, 2, mean)
-
     XC <- Xmat[ta == 0, ]
 
     wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method, bal_tol)

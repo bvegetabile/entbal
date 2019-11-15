@@ -66,6 +66,14 @@ entbal_mc <- function(formula,
         mf$wts[ta == z & R == 1] <- wtsZ$wts
       }
     }
+  } else if (estimand == 'ATZ'){
+    Xmat <- make_Xmat(designX[,2:NC], n_moments)
+    Xmat <- scale(Xmat)
+    targets <- apply(Xmat, 2, mean)
+
+
+  } else {
+    stop("You shouldn't be here")
   }
 
   if(all_converged == F) {

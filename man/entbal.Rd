@@ -6,7 +6,7 @@
 \usage{
 entbal(formula, data = NULL, R = NULL, estimand = "ATE",
   n_moments = 3, max_iters = 1000, verbose = FALSE,
-  optim_method = "L-BFGS-B")
+  optim_method = "L-BFGS-B", bal_tol = 0.005, old_method = T)
 }
 \arguments{
 \item{formula}{Typical R style formula - ex. `TA ~ X1 + X2`}

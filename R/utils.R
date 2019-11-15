@@ -202,14 +202,15 @@ make_Xmat <- function(X, m = 1){
   X_con <- X[, cont_var]
   NC <- ncol(X_con)
   X_bin <- X[, !cont_var]
-  Xout <- cbind(X_bin, X_con)
+  # Xout <- cbind(X_bin, X_con)
+  Xout <- cbind(X_bin)
   if(m > 1){
     for(i in 1:NC){
       nu <- length(unique(X_con[,i]))
       if(nu > m){
-        Xout <- cbind(Xout, poly(X_con[,i], m))
+        Xout <- cbind(Xout, poly(X_con[,i], m, raw = F, simple = T))
       } else {
-        Xout <- cbind(Xout, poly(X_con[,i], nu-1))
+        Xout <- cbind(Xout, poly(X_con[,i], nu-1, raw = F, simple = T))
       }
 
     }
