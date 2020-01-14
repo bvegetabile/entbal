@@ -218,6 +218,8 @@ make_Xmat <- function(X, m = 1){
       }
 
     }
+  } else{
+    Xout <- cbind(Xout, X_con)
   }
   Xout
 }
