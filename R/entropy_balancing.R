@@ -8,7 +8,8 @@ entbal_fit <- function(C, targets,
                        max_iters = 1000,
                        verbose = 0,
                        optim_method = 'L-BFGS-B',
-                       bal_tol = 0.0005){
+                       bal_tol = 0.0005,
+                       opt_constraints = c(-100, 100)){
   n_obs <- nrow(C)
   Q <- rep(1/n_obs, n_obs)
   M <- targets
@@ -18,6 +19,7 @@ entbal_fit <- function(C, targets,
     # W <- entbal_wts(Q, C, f)
     # print(max(M - t(C) %*% W))
     loss <- log(t(Q) %*% exp( - C %*% f )) + t(M) %*% f
+    print(t(Q) %*% exp( - C %*% f ))
     return(loss)
   }
 
@@ -29,16 +31,28 @@ entbal_fit <- function(C, targets,
 
   f_init <- solve(t(C) %*% C + diag(ncol(C))) %*% M
 
-  opt_val <- optim(par = f_init,
-                   fn = loss_func0,
-                   gr = grad_func0,
-                   method = optim_method,
-                   lower = -250,
-                   upper = 250,
-                   control = list(trace = verbose,
-                                  maxit = max_iters,
-                                  lmm = 5,
-                                  pgtol = bal_tol))
+  if(optim_method == 'L-BFGS-B'){
+    opt_val <- optim(par = f_init,
+                     fn = loss_func0,
+                     gr = grad_func0,
+                     method = optim_method,
+                     lower = opt_constraints[1],
+                     upper = opt_constraints[2],
+                     control = list(trace = verbose,
+                                    maxit = max_iters,
+                                    lmm = 5,
+                                    pgtol = bal_tol))
+  } else if (optim_method == 'BFGS') {
+    opt_val <- optim(par = f_init,
+                     fn = loss_func0,
+                     gr = grad_func0,
+                     method = optim_method,
+                     control = list(trace = verbose,
+                                    maxit = max_iters))
+  } else {
+    stop('Unknown optimization method: Only L-BFGS-B and BFGS supported at this point')
+  }
+
   return(list(optim_obj = opt_val,
               f = opt_val$par,
               wts = entbal_wts(Q, C, opt_val$par)))
@@ -102,7 +116,7 @@ entbal <- function(formula,
                    verbose = FALSE,
                    optim_method = 'L-BFGS-B',
                    bal_tol = 0.005,
-                   old_method = T){
+                   opt_constraints = c(-100, 100)){
 
   # Cleaning up user input
   estimand <- toupper(estimand)
@@ -145,8 +159,8 @@ entbal <- function(formula,
       XC <- Xmat[ta == 0 & R == 1, ]
     }
 
-    wtsT <- entbal_fit(XT, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
-    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
+    wtsT <- entbal_fit(XT, targets, n_moment, max_iters, verbose, optim_method, bal_tol, opt_constraints)
+    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method, bal_tol, opt_constraints)
 
     conv_status_treated <- wtsT$optim_obj$convergence
     conv_status_control <- wtsC$optim_obj$convergence
@@ -177,7 +191,7 @@ entbal <- function(formula,
     targets <- apply(XT, 2, mean)
     XC <- Xmat[ta == 0, ]
 
-    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
+    wtsC <- entbal_fit(XC, targets, n_moment, max_iters, verbose, optim_method, bal_tol, opt_constraints)
 
     conv_status_control <- wtsC$optim_obj$convergence
 
