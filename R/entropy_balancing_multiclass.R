@@ -37,15 +37,16 @@ entbal_mc <- function(formula,
 
   if(!estimand %in% c('ATE', 'ATZ')){stop('Invalid estimand: Choose ATE, ATZ')}
 
+
+  mf$wts <- NA
+  conv_messages <- list()
+  opt_obj <- list()
+  all_converged <- T
   if(estimand == 'ATE'){
     Xmat <- make_Xmat(designX[,2:NC], n_moments)
     Xmat <- scale(Xmat)
     targets <- apply(Xmat, 2, mean)
 
-    mf$wts <- NA
-    conv_messages <- list()
-    opt_obj <- list()
-    all_converged <- T
     for(Z in 1:N_uniq){
       z = uniq_ta[Z]
       if(is.null(R)){
@@ -71,6 +72,32 @@ entbal_mc <- function(formula,
     Xmat <- scale(Xmat)
     targets <- apply(Xmat, 2, mean)
 
+    Xmat <- make_Xmat(designX[,2:NC], n_moments)
+    Xmat <- scale(Xmat)
+    XZ <- Xmat[ta == which_Z, ]
+    targets <- apply(XZ, 2, mean)
+
+    for(Z in 1:N_uniq){
+      z = uniq_ta[Z]
+      if(z == which_Z){
+        conv_status_z <- NA
+        conv_status <- T
+        all_converged <- conv_status & all_converged
+        conv_messages[[Z]] <- NA
+        opt_obj[[Z]] <- NA
+        mf$wts[ta == z] <- 1
+      } else {
+        XZ <- Xmat[ta == z, ]
+        wtsZ <- entbal_fit(XZ, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
+        conv_status_z <- wtsZ$optim_obj$convergence
+        conv_status <- ifelse(conv_status_z ==0, T, F)
+        all_converged <- conv_status & all_converged
+        conv_messages[[Z]] <- wtsZ$optim_obj$message
+        opt_obj[[Z]] <- wtsZ$optim_obj
+        mf$wts[ta == z] <- wtsZ$wts
+      }
+    }
+
 
   } else {
     stop("You shouldn't be here")
@@ -86,6 +113,7 @@ entbal_mc <- function(formula,
               'estimand' = estimand,
               'X' = designX[,2:NC],
               'TA' = ta,
+              'ref_z' = which_Z,
               'TA_map' = data.frame('TA_levels' = uniq_ta,
                                     'Z_levels' = 1:N_uniq),
               'opt_obj' = opt_obj)

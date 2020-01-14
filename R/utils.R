@@ -85,36 +85,40 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
   rownames(balsum1) <- colnames(obj$X)
   rownames(balsum2) <- colnames(obj$X)
 
-
   if(estimand == 'ATE'){
     target_means <- apply(obj$X, 2, mean)
     target_stddv <- apply(obj$X, 2, sd)
-    outsum1[,1] <- target_means
-    outsum1[,2] <- target_stddv
-    outsum2[,1] <- target_means
-    outsum2[,2] <- target_stddv
-    for(i in 1:NT){
-      ta <- obj$TA == ta_lvls[i]
-      nt <- sum(ta)
-      group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, obj$wts))
-      group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, obj$wts)))
+  } else{
+    ref_z <- obj$ref_z
+    target_means <- apply(obj$X[obj$TA == ref_z,], 2, mean)
+    target_stddv <- apply(obj$X[obj$TA == ref_z,], 2, sd)
+  }
 
-      uw_group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, ta))
-      uw_group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, ta)))
+  outsum1[,1] <- target_means
+  outsum1[,2] <- target_stddv
+  outsum2[,1] <- target_means
+  outsum2[,2] <- target_stddv
+  for(i in 1:NT){
+    ta <- obj$TA == ta_lvls[i]
+    nt <- sum(ta)
+    group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, obj$wts))
+    group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, obj$wts)))
 
-      outsum1[, 2*i + 1] <- uw_group_means
-      outsum1[, 2*i + 2] <- uw_group_stddv
-      balsum1[, 2*i - 1] <- (uw_group_means - target_means) / target_stddv
-      balsum1[, 2*i] <- log(target_stddv) - log(uw_group_stddv)
+    uw_group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, ta))
+    uw_group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, ta)))
 
-      outsum2[, 2*i + 1] <- group_means
-      outsum2[, 2*i + 2] <- group_stddv
-      balsum2[, 2*i - 1] <- (group_means - target_means) / target_stddv
-      balsum2[, 2*i] <- log(target_stddv) - log(group_stddv)
+    outsum1[, 2*i + 1] <- uw_group_means
+    outsum1[, 2*i + 2] <- uw_group_stddv
+    balsum1[, 2*i - 1] <- (uw_group_means - target_means) / target_stddv
+    balsum1[, 2*i] <- log(target_stddv) - log(uw_group_stddv)
 
-      esssum[i] <- group_ESS(obj$wts, ta)
-      orig_N[i] <- nt
-    }
+    outsum2[, 2*i + 1] <- group_means
+    outsum2[, 2*i + 2] <- group_stddv
+    balsum2[, 2*i - 1] <- (group_means - target_means) / target_stddv
+    balsum2[, 2*i] <- log(target_stddv) - log(group_stddv)
+
+    esssum[i] <- group_ESS(obj$wts, ta)
+    orig_N[i] <- nt
   }
 
   if(show_unweighted){
