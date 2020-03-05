@@ -163,7 +163,6 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
 }
 
 
-
 ks_test <- function(X, TA, wts=rep(1,length(X)), n_pts=1000){
   xmin <- min(X)
   xmax <- max(X)

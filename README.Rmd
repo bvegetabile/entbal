@@ -4,17 +4,21 @@ output: github_document
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, echo = FALSE}
+```{r, include = FALSE}
 knitr::opts_chunk$set(
-  echo = T,
+  collapse = TRUE,
   width = 90,
   comment = "#>",
-  fig.path = "README-"
+  fig.path = "man/figures/README-",
+  out.width = "100%"
 )
 options(width = 100)
 ```
 
 # entbal - An alternative implementation of entropy balancing weights
+
+<!-- badges: start -->
+<!-- badges: end -->
 
 The goal of entbal is to create an easy to use implementation of the entropy balancing algorithm outlined in Hainmueller (2012) for applied researchers to use.  **Note that this is a work in progress**
 
@@ -22,9 +26,9 @@ Hainmueller, Jens. "Entropy balancing for causal effects: A multivariate reweigh
 
 ## Installation
 
-You can install entbal from github with:
+You can install the development version from [GitHub](https://github.com/) with:
 
-```{r gh-installation, eval = FALSE}
+``` r
 # install.packages("devtools")
 devtools::install_github("bvegetabile/entbal")
 ```

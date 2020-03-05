@@ -5,7 +5,7 @@ Version: 0.1.0
 Author: Brian G. Vegetabile
 Maintainer: Brian G. Vegetabile <bvegetabile@gmail.com>
 Description: An alternative implementation of entropy balancing weights.  See 
-    Hainmueller (2012) for further details of the original package and method.  
+    Hainmueller (2012) for further details of the original method and information on the ebal package.  
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
@@ -13,3 +13,5 @@ Imports: Rcpp (>= 0.12.14)
 LinkingTo: Rcpp, RcppArmadillo
 SystemRequirements: C++11
 RoxygenNote: 6.1.0
+Suggests:
+    survey   
