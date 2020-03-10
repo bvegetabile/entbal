@@ -1,4 +1,9 @@
 makeC2 <- function(XD, A, n_moments = 3){
+  if(is.null(ncol(XD))) {
+    XD <- matrix(XD, ncol = 1)
+    colnames(XD)[1] <- 'cov'
+  }
+
   NC <- ncol(XD)
   NR <- nrow(XD)
   outmat <- matrix(NA, nrow = NR, ncol = 0)

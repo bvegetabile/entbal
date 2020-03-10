@@ -62,6 +62,11 @@ summary.entbal_cont <- function(obj,
                                 show_parameters = FALSE,
                                 n_digits = 3){
 
+  if(is.null(ncol(obj$X))) {
+    obj$X <- matrix(obj$X, ncol =1)
+    colnames(obj$X)[1] <- c('cov')
+  }
+
   CB_unwtd <- cbind(apply(obj$X, 2, mean),
                     apply(obj$X, 2, sd),
                     apply(obj$X, 2, function(x) cor(x, obj$TA)),
@@ -75,7 +80,7 @@ summary.entbal_cont <- function(obj,
 
   CB_wtd <- cbind(apply(obj$X, 2, function(x) wmean(obj$wts, x)),
                   apply(obj$X, 2, function(x) sqrt(wvar(obj$wts, x))),
-                  apply(obj$X, 2, function(x) wcor(obj$wts, x, A)),
+                  apply(obj$X, 2, function(x) wcor(obj$wts, x, obj$TA)),
                   t(apply(obj$X, 2, function(x) .lm_ps(x, obj$TA, obj$wts)[2,c(1,3,4)])),
                   apply(obj$X, 2, function(x) .ksbal(x, obj$wts)))
   colnames(CB_wtd) <- c('wtd-Mean',
@@ -105,14 +110,12 @@ summary.entbal_cont <- function(obj,
   orig_N <- nrow(obj$X)
   esssum <- 1/sum(obj$wts^2)
 
-  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   cat('Original & Effective Sample Sizes:\n')
   cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   SS <- cbind(orig_N, esssum, esssum/orig_N)
   colnames(SS) <- c('Orig N', 'ESS', 'Ratio')
   rownames(SS) <- c('')
   print(round(SS, digits = n_digits))
-  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
 
   if(show_parameters){
     cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
@@ -122,11 +125,10 @@ summary.entbal_cont <- function(obj,
     check_vals <- pars %in% obj$constraints
     pars <- data.frame('Value' = round(pars, digits = n_digits),
                        'Saturated' = check_vals)
-    print(pars)
+    print(pars[order(abs(pars$Value), decreasing = T),])
     if(sum(pars[,2]) > 0 ) {
       cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
       cat('Warning: some parameters have saturated at the constraint\n')
-
     }
   }
   cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))

@@ -4,20 +4,24 @@ extract_wts <- function(obj){
 }
 
 print_baltables <- function(X, TA, wts, show_unweighted=TRUE, n_digits = 2){
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
-  balance_table <- entbal::baltable(X, TA, n_digits=n_digits)
-  weightd_table <- entbal::baltable(X, TA, wts, show_unweighted = F, n_digits=n_digits)
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
+  balance_table <- entbal::baltable(as.matrix(X), TA, n_digits=n_digits)
+  weightd_table <- entbal::baltable(as.matrix(X), TA, wts, show_unweighted = F, n_digits=n_digits)
+
+  if(is.null(ncol(weightd_table))){
+    weightd_table <- matrix(weightd_table, nrow = 1)
+  }
   colnames(weightd_table) <- colnames(balance_table)
   if(show_unweighted){
     cat('Unweighted Balance Statistics:\n')
-    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
     print(balance_table)
   }
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   cat('Weighted Balance Statistics:\n')
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   print(weightd_table)
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
 
   t_levels <- unique(TA)
   n_uniq <- length(t_levels)
@@ -30,7 +34,7 @@ print_baltables <- function(X, TA, wts, show_unweighted=TRUE, n_digits = 2){
               'Weighted ESS = ', round(ESSG, n_digits), '\n', sep =''))
     ESS[i] <- ESSG
   }
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   invisible(list('unweighted_balance_table' = balance_table,
                  'weighted_balance_table' = weightd_table,
                  'TA_levels' = t_levels,
@@ -39,31 +43,34 @@ print_baltables <- function(X, TA, wts, show_unweighted=TRUE, n_digits = 2){
 
 
 summary.entbal_binary <- function(obj, show_unweighted = TRUE, n_digits=2){
-  # cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
-  # balance_table <- entbal::baltable(obj$X, obj$TA, n_digits=n_digits)
-  # weightd_table <- entbal::baltable(obj$X, obj$TA, obj$wts, show_unweighted = F, n_digits=n_digits)
-  # colnames(weightd_table) <- colnames(balance_table)
-  # if(show_unweighted){
-  #   cat('Unweighted Balance Statistics:\n')
-  #   cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
-  #   print(balance_table)
-  # }
-  # cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
-  # cat('Weighted Balance Statistics:\n')
-  # cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
-  # print(weightd_table)
-  # cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
-  # invisible(list('unweighted_balance_table' = balance_table,
-  #                'weighted_balance_table' = weightd_table))
-  #
-  outtab <- print_baltables(obj$X, obj$TA, obj$wts, show_unweighted=show_unweighted, n_digits=n_digits)
+  if(is.factor(obj$TA)) {
+    cat('Reference levels for headers:\n')
+    ta_lvls <- levels(obj$TA)
+    if(obj$eb_pars$estimand == 'ATT'){
+      ta_ind <- ifelse(obj$TA == obj$eb_pars$which_z,1,0)
+      cat(paste('Exposure 0:', ta_lvls[ta_lvls != obj$eb_pars$which_z], '\n'))
+      cat(paste('Exposure 1:', obj$eb_pars$which_z, '\n'))
+    } else {
+      ta_ind <- ifelse(obj$TA == min(ta_lvls), 0, 1)
+      cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
+      cat(paste('Exposure 0:', min(ta_lvls), '\n'))
+      cat(paste('Exposure 1:', max(ta_lvls), '\n'))
+    }
+  }
+  outtab <- print_baltables(as.matrix(obj$X),
+                            ta_ind,
+                            obj$wts,
+                            show_unweighted=show_unweighted,
+                            n_digits=n_digits)
 
 }
 
 summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2){
-  estimand <- obj$estimand
+  estimand <- obj$eb_pars$estimand
   ta_lvls <- unique(obj$TA)
   NT <- length(ta_lvls)
+
+  if(is.null(ncol(obj$X))) obj$X <- matrix(obj$X, ncol = 1)
 
   outsum1 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * (NT+1))
   balsum1 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * NT)
@@ -122,37 +129,37 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
   }
 
   if(show_unweighted){
-    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
     cat('Unweighted Summary Statistics:\n')
-    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
     print(round(outsum1, digits = n_digits))
   }
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   cat('Weighted Summary Statistics:\n')
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   print(round(outsum2, digits = n_digits))
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
 
   if(show_unweighted){
-    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
     cat('Unweighted Balance Statistics:\n')
-    cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+    cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
     print(round(balsum1, digits = n_digits))
   }
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   cat('Weighted Balance Statistics:\n')
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   print(round(balsum2, digits = n_digits))
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
 
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   cat('Original & Effective Sample Sizes:\n')
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   SS <- cbind(orig_N, esssum, esssum/orig_N)
   colnames(SS) <- c('Orig N', 'ESS', 'Ratio')
   rownames(SS) <- paste("TA:", ta_lvls, sep = '')
   print(round(SS, digits = n_digits))
-  cat(paste(paste(rep('-', 90), collapse = ''), '\n', sep=''))
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
 
   invisible(list('unweighted_summary' = outsum1,
                  'unweighted_balstats' = balsum1,
@@ -163,7 +170,7 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
 }
 
 
-ks_test <- function(X, TA, wts=rep(1,length(X)), n_pts=1000){
+ks_test <- function(X, TA, wts=rep(1,length(X)), n_pts=100){
   xmin <- min(X)
   xmax <- max(X)
   int_pts <- seq(xmin, xmax, length.out = n_pts)
@@ -185,40 +192,39 @@ ks <- function(x,z,w) {
 
 .n_uniq <- function(x){length(unique(x))}
 
-.find_continuous <- function(X){apply(X, 2, .n_uniq) > 2}
-
-# make_Xmat <- function(X, m = 1){
-#   cont_var <- .find_continuous(X)
-#   X_con <- X[, cont_var]
-#   X_bin <- X[, !cont_var]
-#   Xout <- cbind(X_bin, X_con)
-#   if(m > 1){
-#     for(i in 2:m){
-#       Xout <- cbind(Xout, X_con**i)
-#     }
-#   }
-#   Xout
-# }
+.find_continuous <- function(X){apply(as.matrix(X), 2, .n_uniq) > 2}
 
 make_Xmat <- function(X, m = 1){
-  cont_var <- .find_continuous(X)
-  X_con <- X[, cont_var]
-  NC <- ncol(X_con)
-  X_bin <- X[, !cont_var]
-  # Xout <- cbind(X_bin, X_con)
-  Xout <- cbind(X_bin)
-  if(m > 1){
-    for(i in 1:NC){
-      nu <- length(unique(X_con[,i]))
+  if(is.null(ncol(X))){
+    if(length(length(unique(X))) == 2){
+      Xout <- X
+    } else {
+      nu <- length(unique(X))
       if(nu > m){
-        Xout <- cbind(Xout, poly(X_con[,i], m, raw = F, simple = T))
+        Xout <- poly(X, m, raw = F, simple = T)
       } else {
-        Xout <- cbind(Xout, poly(X_con[,i], nu-1, raw = F, simple = T))
+        Xout <- poly(X, nu-1, raw = F, simple = T)
       }
-
     }
-  } else{
-    Xout <- cbind(Xout, X_con)
+  } else {
+    cont_var <- .find_continuous(X)
+    X_con <- X[, cont_var]
+    NC <- ncol(X_con)
+    X_bin <- X[, !cont_var]
+    # Xout <- cbind(X_bin, X_con)
+    Xout <- cbind(X_bin)
+    if(m > 1){
+      for(i in 1:NC){
+        nu <- length(unique(X_con[,i]))
+        if(nu > m){
+          Xout <- cbind(Xout, poly(X_con[,i], m, raw = F, simple = T))
+        } else {
+          Xout <- cbind(Xout, poly(X_con[,i], nu-1, raw = F, simple = T))
+        }
+      }
+    } else{
+      Xout <- cbind(Xout, X_con)
+    }
   }
   Xout
 }
