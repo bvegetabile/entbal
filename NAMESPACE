@@ -1,6 +1,6 @@
 exportPattern("^[^\\.]")
 
-importFrom(Rcpp, evalCpp)
+#importFrom(Rcpp, evalCpp)
 #exportPattern("^[[:alpha:]]+")
 
 #-------------------------------------------------------------------------------
@@ -12,6 +12,6 @@ importFrom(Rcpp, evalCpp)
 # importFrom(RcppParallel, RcppParallelLibs)
 #-------------------------------------------------------------------------------
 
-useDynLib(entbal, .registration=TRUE)
+#useDynLib(entbal, .registration=TRUE)
 
 #exportPattern("^[[:alpha:]]+")

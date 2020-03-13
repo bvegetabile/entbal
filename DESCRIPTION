@@ -9,9 +9,6 @@ Description: An alternative implementation of entropy balancing weights.  See
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-Imports: Rcpp (>= 0.12.14)
-LinkingTo: Rcpp, RcppArmadillo
-SystemRequirements: C++11
-RoxygenNote: 6.1.0
+RoxygenNote: 7.0.2
 Suggests:
     survey   

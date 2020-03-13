@@ -4,9 +4,18 @@
 \alias{entbal}
 \title{Compute optimal balancing weights via entropy balancing}
 \usage{
-entbal(formula, data = NULL, R = NULL, estimand = "ATE",
-  n_moments = 3, max_iters = 1000, verbose = FALSE,
-  optim_method = "L-BFGS-B", bal_tol = 0.005, old_method = T)
+entbal(
+  formula,
+  data = NULL,
+  R = NULL,
+  estimand = "ATE",
+  n_moments = 3,
+  max_iters = 1000,
+  verbose = FALSE,
+  optim_method = "L-BFGS-B",
+  bal_tol = 0.005,
+  opt_constraints = c(-100, 100)
+)
 }
 \arguments{
 \item{formula}{Typical R style formula - ex. `TA ~ X1 + X2`}
