@@ -43,20 +43,22 @@ print_baltables <- function(X, TA, wts, show_unweighted=TRUE, n_digits = 2){
 
 
 summary.entbal_binary <- function(obj, show_unweighted = TRUE, n_digits=2){
-  if(is.factor(obj$TA)) {
-    cat('Reference levels for headers:\n')
+
+  cat('Reference levels for headers:\n')
+  cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
+  if(is.factor(obj$TA)){
     ta_lvls <- levels(obj$TA)
-    if(obj$eb_pars$estimand == 'ATT'){
-      ta_ind <- ifelse(obj$TA == obj$eb_pars$which_z,1,0)
-      cat(paste('Exposure 0:', ta_lvls[ta_lvls != obj$eb_pars$which_z], '\n'))
-      cat(paste('Exposure 1:', obj$eb_pars$which_z, '\n'))
-    } else {
-      ta_ind <- ifelse(obj$TA == min(ta_lvls), 0, 1)
-      cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
-      cat(paste('Exposure 0:', min(ta_lvls), '\n'))
-      cat(paste('Exposure 1:', max(ta_lvls), '\n'))
-    }
+    ta_ind <- ifelse(obj$TA == obj$eb_pars$which_z,1,0)
+    cat(paste('Exposure 0:', ta_lvls[ta_lvls != obj$eb_pars$which_z], '\n'))
+    cat(paste('Exposure 1:', obj$eb_pars$which_z, '\n'))
+  } else {
+    ta_lvls <- unique(obj$TA)
+    ta_ind <- ifelse(obj$TA == min(ta_lvls), 0, 1)
+    cat(paste('Exposure 0:', min(ta_lvls), '\n'))
+    cat(paste('Exposure 1:', max(ta_lvls), '\n'))
   }
+
+
   outtab <- print_baltables(as.matrix(obj$X),
                             ta_ind,
                             obj$wts,
@@ -96,7 +98,7 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
     target_means <- apply(obj$X, 2, mean)
     target_stddv <- apply(obj$X, 2, sd)
   } else{
-    ref_z <- obj$ref_z
+    ref_z <- obj$eb_pars$which_z
     target_means <- apply(obj$X[obj$TA == ref_z,], 2, mean)
     target_stddv <- apply(obj$X[obj$TA == ref_z,], 2, sd)
   }

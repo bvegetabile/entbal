@@ -28,9 +28,10 @@
     else if(nc >= no/2 & parlist$exp_type != 'continuous'){
       parlist$exp_type <- 'continuous'
       warning('Exposure type mismatch. Number of unique obs > 0.5 * n_obs. Using exp_type = continuous')
-    } else {
-      stop('Unable able to automatically detect exposure type.  Requires variable "exp_type": binary, multi, continuous')
     }
+    # else {
+    #   stop('Unable able to automatically detect exposure type.  Requires variable "exp_type": binary, multi, continuous')
+    # }
 
   }
 
@@ -56,7 +57,7 @@
 
   if( ! 'max_iters' %in% par_names){
     parlist$max_iters <- 1000
-    warning('Max number of iterations not set. Using max_iter = 1000')
+    warning('Max number of iterations not set. Using max_iters = 1000')
   }
 
   if( ! 'optim_method' %in% par_names) {
@@ -76,7 +77,7 @@
   }
 
   if(parlist$optim_method == 'BFGS') {
-    parlist$bal_tol <- 0.005
+    parlist$bal_tol <- 1e-6
     parlist$opt_constraints <- c(-100,100)
     if('bal_tol' %in% par_names) warning('BFGS chosen... bal_tol ignored')
     if('opt_constraints' %in% par_names) warning('BFGS chosen... opt_constraints ignored')
@@ -84,7 +85,7 @@
 
   if(parlist$optim_method == 'L-BFGS-B'){
     if( !'bal_tol' %in% par_names) {
-      parlist$bal_tol <- 0.005
+      parlist$bal_tol <- 1e-6
       warning('bal_tol not specified. set to 0.005')
     }
     if('opt_constraints' %in% par_names) {
@@ -132,57 +133,168 @@
         stop('Invalid estimand: Choose ATE, ATZ')
       }
     }
-
-    if((parlist$exp_type == 'multi' | parlist$exp_type == 'binary') & !(parlist$estimand == 'ATE')){
-      if( !('which_z' %in% par_names)) {
-        parlist$which_z <- ifelse(is.factor(uc),
-                                  min(levels(uc)),
-                                  min(uc))
-        warning(paste('Reference exposure not chosen: eb_pars$which_z set to', parlist$which_z))
-      } else{
-        if(!parlist$which_z %in% uc) {
-          stop(paste('Chosen exposure reference level not in unique levels. Levels found:',
-                     paste(uc, collapse =', ')))
-        }
-      }
-
-    }
-
-
-
-
-    if(!('R' %in% par_names)) {
-      parlist$R  <- NULL
-    } else{
-      warning('Response indicators included')
-    }
-
   } else if(parlist$exp_type == 'continuous') {
 
   } else {
     stop('Invalid choice of "exp_type", choose: binary, multi, continuous')
   }
 
+
+  if((parlist$exp_type == 'multi' | parlist$exp_type == 'binary') & !(parlist$estimand == 'ATE')){
+    if( !('which_z' %in% par_names)) {
+
+      if(parlist$exp_type == 'binary' & parlist$estimand == 'ATT'){
+        parlist$which_z <- 1
+      } else{
+        parlist$which_z <- ifelse(is.factor(uc),
+                                  min(levels(uc)),
+                                  min(uc))
+      }
+      warning(paste('Reference exposure not chosen: eb_pars$which_z set to', parlist$which_z))
+    } else{
+      if(!parlist$which_z %in% uc) {
+        stop(paste('Chosen exposure reference level not in unique levels. Levels found:',
+                   paste(uc, collapse =', ')))
+      }
+    }
+  }
+
+
+  if(!('R' %in% par_names)) {
+    parlist$R  <- NULL
+  } else{
+    warning('Response indicators included')
+  }
+
+
+
   parlist
 }
 
-# R = NULL,
-# estimand = "ATE",
-# n_moments = 3,
-# max_iters = 1000,
-# verbose = FALSE,
-# optim_method = 'L-BFGS-B',
-# bal_tol = 0.005,
-# opt_constraints = c(-100, 100)
+#' Compute optimal balancing weights via entropy balancing
+#'
+#' @param formula Typical R style formula - ex. `TA ~ X1 + X2`
+#' @param data R \code{data.frame} that contains the variables listed in the formula
+#' @param eb_pars R \code{list} of parameters required for entropy balancing.
+#'
+#' The list recommends including the following variables at a minimum:
+#' \itemize{
+#'   \item{\code{exp_type}}: choose from \code{binary}, \code{multi}, \code{continuous}
+#'   \item{\code{n_moments}}: number of moments to match in the entropy balancing procedure.  Recommended \code{3}
+#'   \item{\code{max_iters}}: maximum number of iterations for the optimization routine.  Recommended \code{1000}
+#'   \item{\code{verbose}}: logical for if the optimization should print information to the screen
+#'   \item{\code{optim_method}}: Choose \code{L-BFGS-B} or \code{BFGS}.  Recommendation is \code{L-BFGS-B}
+#' }
+#' The function will attempt to set values to default values if variables are not specified and provide warnings when necessary. To ignore these warnings set the \code{suppress_warnings} variable to \code{T}.
+#'
+#' For \code{exp_type = 'binary'} or \code{exp_type = 'multi'} the following variables should also be set
+#'
+#' \itemize{
+#'   \item{\code{estimand}} choose from \code{ATE}, \code{ATT}, \code{ATC}, \code{ATZ}.
+#'   \item{\code{which_z}} defines the referent variable for estimands: \code{ATT}, \code{ATC}, \code{ATZ}
+#' }
+#'
+#' For \code{optim_method = 'L-BFGS-B'} the following variables may also be set
+#'
+#' \itemize{
+#'   \item{\code{bal_tol}} tolerance for the optimization routine
+#'   \item{\code{opt_constraints}} parameter constraints for the optimization.  Recommend \code{opt_constraints = c(-100,100)}.  If the algorithm sets some of the parameter values to the boundary, try to relax these values further.
+#' }
+#'
+#' @param suppress_warnings logical argument to suppress warnings of function checking \code{eb_pars}
+#' @return Object that contains the weights obtained from the balancing procedure and parameters from the optimization procedure
+#'
+#' The object that is returned is a list that contains the following entries
+#' \itemize{
+#' \item{ \code{wts} - Optimal weights for the estimand of interest and matched number of moments.}
+#' \item{ \code{convergence} - Convergence code from \code{optim} package}
+#' \item{ \code{message} - Convergence message from \code{optim} package}
+#' \item{ \code{opt_obj} - optimization object from \code{optim} package}
+#' \item{ \code{eb_pars} - variable list the model was fit to}
+#' \item{ \code{X} - Model frame created from data.}
+#' \item{ \code{TA} - Vector of Exposure Assignments Used.}
+#' }
+#' @examples
+#' # Binary exposure example
+#'
+#' library(entbal)
+#' n_obs <- 10000
+#' X1 <- rnorm(n_obs)
+#' X2 <- rnorm(n_obs)
+#' A <- rbinom(n_obs, 1, plogis(X1))
+#' A <- factor(ifelse(A == 1, 'A', 'B'))
+#' D <- data.frame(X1, X2, A)
+#
+#' par_list <-  list('exp_type' = 'binary',
+#'                   'n_moments' = 3,
+#'                   'max_iters' = 1000,
+#'                   'estimand' = 'ATC',
+#'                   'verbose' = F,
+#'                   'optim_method' = 'l-bfgs-b',
+#'                   'bal_tol' = 1e-8,
+#'                   'opt_constraints' = c(-1000,1000),
+#'                   'which_z' = 'A')
+#' Q <- entbal_dev(A ~ X1 + X2,
+#'                 data = D,
+#'                 eb_pars = par_list,
+#'                 suppress_warnings = F)
+#' out1 <- summary(Q)
+#'
+#' # ---------------------------------------------------------------------------
+#' # Multi-valued exposure - ATZ Example
+#'
+#' C <- sample(1:3, n_obs, replace = T)
+#' X1 <- NA
+#' X1[C == 1] <- rnorm(sum(C==1), mean = -0.5, sd = 3)
+#' X1[C == 2] <- rnorm(sum(C==2), mean = 0, sd = 3)
+#' X1[C == 3] <- rnorm(sum(C==3), mean = 0.5)
+#' X2 <- rnorm(n_obs)
+#' D <- data.frame(C, X1, X2)
+#'
+#' par_list <-  list('exp_type' = 'multi',
+#'                   'n_moments' = 3,
+#'                   'max_iters' = 1000,
+#'                   'estimand' = 'ATZ',
+#'                   'verbose' = F,
+#'                   'optim_method' = 'l-bfgs-b',
+#'                   'bal_tol' = 1e-8,
+#'                   'opt_constraints' = c(-1000,1000),
+#'                   'which_z' = 3)
+#'
+#'
+#' P <- entbal_dev(C ~ X1 + X2, data = D, eb_pars = par_list, suppress_warnings = F)
+#' out2 <- summary(P)
+#'
+#' # ---------------------------------------------------------------------------
+#' # Continuous exposure example
+#'
+#' X1 <- rnorm(n_obs)
+#' X2 <- rnorm(n_obs)
+#' G <- rnorm(n_obs, mean = X1 - X2)
+#' D <- data.frame(G, X1, X2)
+#'
+#' par_list <-  list(#'exp_type' = 'continuous',
+#'   'n_moments' = 3,
+#'   'max_iters' = 1000,
+#'   'estimand' = 'ATE',
+#'   'verbose' = T,
+#'   'optim_method' = 'l-bfgs-b',
+#'   'bal_tol' = 1e-8,
+#'   'opt_constraints' = c(-1000,1000))
+#'
+#'
+#' O <- entbal_dev(G ~ X1 + X2, data = D, eb_pars = par_list, suppress_warnings = F)
+#' out3 <- summary(O, show_parameters = T)
+#
 
-entbal_dev <- function(formula,
-                       data = NULL,
-                       eb_pars = list('exp_type' = 'binary',
-                                      'n_moments' = 3,
-                                      'max_iters' = 1000,
-                                      'verbose' = FALSE,
-                                      'optim_method' = 'L-BFGS-B'),
-                       suppress_warnings = F){
+entbal <- function(formula,
+                   data = NULL,
+                   eb_pars = list('exp_type' = 'binary',
+                                  'n_moments' = 3,
+                                  'max_iters' = 1000,
+                                  'verbose' = FALSE,
+                                  'optim_method' = 'L-BFGS-B'),
+                   suppress_warnings = F){
 
 
 
@@ -190,7 +302,7 @@ entbal_dev <- function(formula,
   formula <- formula(formula)
 
   # Checking if the formula has a response
-  if(!attr(terms(formula, data=data), 'response')) stop('Please supply a treatment variable on the left side of the formula');
+  if(!attr(terms(formula, data=data), 'response')) stop('Please supply a exposure variable on the left side of the formula');
 
   # Collecting the data and making a model.frame object to create the design matrix
   mf <- model.frame(formula, data = data)

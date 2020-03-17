@@ -1,18 +1,18 @@
 
-make_wts_ATE <- function(p, TI){
-  return (TI / p + (1 - TI) / (1 - p));
+make_wts_ATE <- function(ps, TI){
+  return (TI / ps + (1 - TI) / (1 - ps));
 }
 
-make_wts_ATT <- function(p, TI){
-  return (TI + (1 - TI) * p / (1 - p));
+make_wts_ATT <- function(ps, TI){
+  return (TI + (1 - TI) * ps / (1 - ps));
 }
 
-make_wts_ATC <- function(p, TI){
-  return (TI * (1 - p) / p + (1 - TI));
+make_wts_ATC <- function(ps, TI){
+  return (TI * (1 - ps) / ps + (1 - TI));
 }
 
-make_wts_ATO <- function(p, TI){
-  return (TI  * (1 - p) + (1 - TI) * p);
+make_wts_ATO <- function(ps, TI){
+  return (TI  * (1 - ps) + (1 - TI) * ps);
 }
 
 wtd_mean <- function(X, TI, w) {
@@ -34,7 +34,7 @@ wtd_sd2 <- function(X, TI, w) {
   XC <- wtd_mean(X, 1-TI, w);
   ST <- wtd_sd2(X, TI, w);
   SC <- wtd_sd2(X, 1-TI, w);
-  return (XT - XC) / sqrt((ST + SC)/2.0);
+  return ((XT - XC) / sqrt((ST + SC)/2.0));
 }
 
 .cov_var_bal <- function(X, TI, w){

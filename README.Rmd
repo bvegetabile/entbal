@@ -47,12 +47,19 @@ The original DW99 paper contains six control datasets.  The example below uses a
 library(entbal)
 library(survey, quietly = T, warn.conflicts = F, verbose = F)
 dset <- dw99cps1
+
+eb_pars <- list(exp_type = 'binary',
+                estimand = 'ATT',
+                n_moments = 3, 
+                optim_method = 'L-BFGS-B',
+                verbose = T,
+                opt_constraints = c(-250,250),
+                bal_tol = 1e-8,
+                max_iters = 1000,
+                which_z = 1)
 estwts <- entbal(TA ~ age + education + black + hispanic + married + nodegree + RE74 + RE75,
                  data = dset,
-                 n_moments = 3,
-                 verbose = 1,
-                 bal_tol = 1e-3,
-                 estimand = "ATT")
+                 eb_pars = eb_pars)
 summary(estwts)
 ```
 
@@ -101,6 +108,16 @@ library(entbal)
 library(survey)
 n_obs <- 2500
 n_sims <- 500
+
+ebp <- list(exp_type = 'binary',
+            estimand = 'ATE',
+            n_moments = 3, 
+            optim_method = 'L-BFGS-B',
+            verbose = F,
+            opt_constraints = c(-250,250),
+            bal_tol = 1e-8,
+            max_iters = 1000)
+
 outro <- matrix(NA, nrow = n_sims, ncol = 4)
 start_time <- Sys.time()
 for(i in 1:n_sims){
@@ -134,7 +151,8 @@ for(i in 1:n_sims){
   
   # Entropy Balancing ATE
   wts <- entbal(TA ~ X1 + X2 + X3 ,
-                verbose = 0, n_moments = 2, estimand = 'ATE')
+                data = dset,
+                eb_pars = ebp)
   dset$wts <- wts$wts
   design <- svydesign(ids=~1, weights=~wts, data = dset)
   resp <- svyglm('Y ~ TA', design = design)
