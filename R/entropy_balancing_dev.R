@@ -366,7 +366,7 @@ entbal <- function(formula,
       x_mat <- make_Xmat(design_x[,2:nc], eb_pars$n_moments)
       x_mat <- scale(x_mat)
       xz <- x_mat[ta == eb_pars$which_z, ]
-      targets <- apply(xz, 2, mean)
+      targets <- apply(as.matrix(xz), 2, mean)
 
       for(k in 1:n_classes){
         z = uniq_ta[k]
