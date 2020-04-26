@@ -379,7 +379,7 @@ entbal <- function(formula,
           mf$wts[ta == z] <- 1
         } else {
           xz <- x_mat[ta == z, ]
-          wts_z <- entbal_fit(C = xz,
+          wts_z <- entbal_fit(C = as.matrix(xz),
                               targets = targets,
                               n_moments = eb_pars$n_moments,
                               max_iters = eb_pars$max_iters,
