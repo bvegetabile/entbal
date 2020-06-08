@@ -1,0 +1,323 @@
+---
+title: "A Tutorial on Entropy Balancing and Weighted Estimation of Causal Effects: A Guide to the `entbal` Package in R"
+# output: rmarkdown::html_vignette
+output: pdf_document
+vignette: >
+  %\VignetteIndexEntry{entbal-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  width = 200,
+  comment = "#>"
+)
+```
+
+**Author:** Brian Vegetabile, PhD 
+
+**email :** bvegetab@rand.org
+
+## Overview
+
+This document provides a tutorial on the `entbal` package and using entropy balancing to create weights for use in analyses aiming to make causal inferences.  
+
+The document begins by providing a crash course in causal inference to demonstrate the setting and assumptions that the package was originally created to handle.  Users that are familiar with causal inference may skip this section. The document then provides an overview of the package and the main estimation function `entbal`, outlining the key functionality and inputs to the function.  The tutorial then provides examples in three different settings: binary exposures, multi-leveled exposures, and continous exposures.  
+
+The primary functions of the package are demonstrated using real-world data when possible and simulated datasets where necessary.  These data sets will be discussed when introduced.  
+
+
+## A Crash Course in Causal Inference and Entropy Balancing
+
+### Causal Inference
+
+This section serves to set the stage for causal inference and weighted estimation and is no means all encompassing of the field of causal inference.  For good overviews see: Imbens & Rubin (2015) _Causal Inference for Statistics, Social, and Biomedical Sciences_ or Rosenbaum (2010) _Design of Observational Studies_.  For a good overview on weighting analyses see Li et al (2018) _Balancing Covariates via Propensity Score Weighting_. As stated in the overview, feel free to skip this section if you are familiar with these concepts.  
+
+Consider three sets of variables: an exposure variable $A$, an outcome variable $Y$, and a $d$-dimensional vector of covariates $X$ that are responsible for assigning exposure levels and potentially related to the outcome variable.  We frame causal inference from the potential outcomes framework of Neyman & Rubin.  That is, for each individual $i$ we posit that there exists a "potential" outcome for each possible exposure level that the variable $A$ can take on; i.e., for each $A_i = a$ there exists a potential outcome variable $Y_i(a)$.  Under the potential outcomes framework, causal effects would be defined as contrasts of these potential outcomes, e.g., if $A$ is binary the effect can be defined as $\tau_i = Y_i(1) - Y_i(0)$.  
+
+The _Fundamental Problem of Causal Inference_ (see Holland (1986)) is that we can only ever observe **one** of these potential outcomes for an individual (without making additional strong assumptions); specifically it means that the observed $Y_i$ can be assumed to equal the potential outcome $Y_i(a)$ if exposure was $A_i=a$ and all other $Y_i(a')$ are unobserved (or missing).  Therefore one relaxation from individual inference would be to find a way to borrow information from individuals in the population to estimate **averages** of these contrasts of potential outcomes in some population.  The goal then becomes to estimate (sub)population effects, i.e., $\tau_g = E_{g}[Y(a') - Y(a)]$ where $g$ represents a density function that defines a (sub)population over which we want to perform inference and $A$ is now a general exposure variable.  The general issue is that in our setup, if there is a relationship between $X$ and $A$ then it follows that $E[Y|A=a] \ne E[Y(a)]$ (except under certain circumstances) and therefore simple regressions will not suffice to estimate causal effects and perform inferences. 
+
+Our goal then will be to find estimation strategies that allow us to estimate $E_g[Y(a)]$ and a common strategy is weighted estimation that we discuss here. The goal is to find weights $w$ such that $E_p[wY|A=a] = E_g[Y(a)]$.  If the goal of estimation is in estimating the _average treatment effect in the population (ATE)_, then for each unit $i$ receiving $A_i=a$ and with covariates $X_i = x$ the weights are of the form
+
+$$w_i(a,x) = \frac{p_A(a)}{p_{A|X}(a|x)}$$
+
+where the notation $p_{Z}(z)$ is the density function of the random variable $Z$ evaluated at $z$ and the denominator is related to the _propensity score_ (see Rosenbaum & Rubin (1983)).  These weights are referred to as stabilized inverse probability of treatment weights (IPTW).  It follows that 
+
+\[
+\begin{aligned}
+E_{X|A}[wY|A=a] &= \int \frac{p_A(a)}{p_{A|X}(a|x)} Y p_{X|A}(x|a) \partial x \\
+&= \int Y \frac{p_{A,X}(a,x)}{p_{A|X}(a|x)} \partial x \\
+&= \int Y \frac{p_{A|X}(a|x) p_{X}(x)}{p_{A|X}(a|x)}\partial x \\
+&= \int Y p_X(x) \partial x \\
+&= E_X[Y] \equiv E[Y(a)]
+\end{aligned}
+\]
+
+This can be generalized more broadly (as is done in Li et al. (2018) _Balancing Covariates via Propensity Score Weighting_), so we do not discuss the generalization of these weights much further unless as needed.  
+
+If treatment levels are discrete (e.g., binary or multi-leveled), then estimators of the form 
+
+$$\hat \tau(a) = \frac{\sum_i w_i I(A_i = a) Y_i }{\sum_i w_i I(A_i = a)}$$
+
+can provide consistent estimation for $E_g[Y(a)]$ (or local regression estimators if the exposure is continuous).  
+
+#### A note on strong assumptions that must be made
+
+### Entropy Balancing
+
+Estimation therefore requires two-stages: 1) a first stage that estimates the weights, and 2) a second stage that actually estimates the outcome.  Entropy balancing and the `entbal` software is focused on creating weights in this first stage that can be used to estimate effects.  
+
+There is an extensive literature on estimating weights in the first-stage and many focus on either parametrically, or nonparametrically, estimating the density function $p_{A|X}(a|x)$ or , when the exposure is binary, the propensity score $e(x) = Pr(A = 1 | X = x)$.  Entropy balancing is a nonparametric optimization based approach that focuses on estimating the weights directly, focusing on exploiting properties of the distributions of the covariates that should occur _if_ the weights have the correct ratio-of-densities interpretatation.  
+
+The use of weights has implications on the actual observed distributions of $A$ and $X$, i.e., we can look at the weighted distributions of the covariates to see assess how their properties are changed under the weighting we've employed.  
+
+##### _Binary & Multi-level exposures_
+
+Consider estimating the ATE, we see that 
+
+\[
+\begin{aligned}
+E_{X|A}[w g(X) | A=a] &= \int g(x) \frac{p_{A}(a)}{p_{A|X}(a|x)} p_{X|A}(x|a) \partial x \\ 
+&= \int g(x) \frac{p_{A,X}(a,x)}{p_{A|X}(a|x)} \partial x \\ 
+&= \int g(x) p_X(x) \partial x \\
+&= E_X[g(X)]
+\end{aligned}
+\]
+
+Here we see that under this weighting scheme, the expectations of functions of the covariates conditioned upon treatment should have the same values as expectations of functions of the covariates in the overall population.  Consider another weighting scheme for estimating the _average treatment effect on the treated (ATT)_, i.e., with binary exposures $E[Y(1) - Y(0) | A = a]$ and treated group defined as $A=a$.  For each exposure group $A = a'$, the weights can be written in the form (i.e., a stabilized form) 
+
+$$w_i^{ATT}(a',x) = \frac{p_{A}(a')}{p_{A}(a)} \frac{p_{A|X}(a|x)}{p_{A|X}(a'|x)}$$
+
+Implying that when $a' = a$ the weights are $1$ and a ratio-of-densities otherwise.  This implies that 
+
+\[
+\begin{aligned}
+E_{X|A}[w g(X) | A=a'] &= \int g(x) \frac{p_{A}(a')}{p_{A}(a)} \frac{p_{A|X}(a|x)}{p_{A|X}(a'|x)} p_{X|A}(x|a') \partial x \\ 
+&= \int g(x) \frac{p_{A}(a')}{p_{A}(a)} \frac{p_{A,X}(a,x)}{p_{A,X}(a',x)} p_{X|A}(x|a') \partial x \\ 
+&= \int g(x) \frac{p_{A}(a')}{p_{A}(a)} \frac{p_{X|A}(x|a) p_A(a)}{p_{X|A}(x|a') p_A(a')} p_{X|A}(x|a') \partial x \\ 
+&= \int g(x) p_{X|A}(x|a) \partial x \\ 
+&= E_{X|A}[g(X) | A = a]
+\end{aligned}
+\]
+
+We see that the weights have the effect of making the expectations of functions of the covariates conditioned on the control subpopulation have the same values as expectations of functions of the covariates in the treatment subpopulation. These properties of the weights imply that we can find weights that are optimized to meet these characteristics subject to certain constraints.  
+
+Specifically, entropy balancing for binary and multi-leveled exposures does this by solving the following optimization problem for each treatment level $A=a$:
+
+\[ 
+\begin{aligned}
+\min_{w} \sum_{i:A_i =a} w_i \log\left(\frac{w_i}{q_i}\right) & \hspace{1em} \mbox{subject to} \\
+\sum_{i:A_i =a} w_i g_k(X_{ij}) = E_h[g_k(X_{j})] & \hspace{1em} \mbox{for population } h  \mbox{, covariate dimension } j \mbox{, and function } k \\
+ \sum_{i:A_i =a} w_i = 1 &  \hspace{1em} w_i > 1 \mbox{ for all } i \\\\ 
+\end{aligned}
+\]
+
+The optimization is minimizing the Kullback-Leibler divergence between the desired weights $w$ and a set of base weights $q$.  The base weights, $q_i$, are typically set to empirical weights ($q_i = [\sum_i I(A_i = a)]^{-1}$) that maximimizes the sample information.  The parameters $E_h[g_k(X_{j})]$ are often called the "targets" and are set empirically from the data, i.e., for the ATE the parameter $E_X[g_k(X_{j})]$ may be empirically set to $\frac{1}{N} \sum_{i=1}^N g_k(X_{ij})$.  The functions are $g_k(\cdot)$ are typically chosen to be the moments of the distribution, i.e., for the ATE $E_X[X_{j}^p]$ may be empirically set to $\frac{1}{N} \sum_{i=1}^N X_{ij}^p$ or their scaled versions.  In the `entbal` package we only consider the weighted moments of each scaled covariate (i.e., $E[\tilde X_{ij}^p]$, where $\tilde X_j$ is the scaled transformation of $X_j$).
+
+##### _Continuous exposures_
+
+## Overview of the package
+
+##### _Installation and Setup_
+
+If the package is not yet installed, you can install the development package by running the following code from the Console in `R`.  Note that the package `devtools` is required for this installation:
+
+```{r, echo=T, eval = F}
+devtools::install_github('bvegetabile/entbal', build_vignettes = T)
+```
+
+Once installed, the package can be loaded using the familiar library command.  
+
+```{r setup}
+library(entbal)
+```
+
+##### _Primary Function Overview and Inputs_
+
+
+The primary function in the package has the same name as the package, `entbal`.  This function takes as input the following variables:
+
+
+| Input Variable      | Description                                                  | 
+|---------------------|--------------------------------------------------------------|
+| `formula`           | `R` style formula representing exposure given pre-exposure   |
+|                     | covariates, e.g., `TA ~ X1 + X2 + X3`                        |
+| `data`              | Dataframe that contains the treatment variable `TA` and the  |
+|                     | covariates `X1`, `X2`, `X3`.  If a dataframe is not provided |
+|                     | the variables will be searched for in the global environment |
+| `eb_pars`           | List of parameters required for the entropy balancing        |
+|                     | optimization.  These are discussed further below             |
+| `suppress_warnings` | A logical to print warnings from a function that checks the  |
+|                     | input variables to `eb_pars`. Defaults to `FALSE`.           |
+
+The example usage outlined in the `help()` file for `entball` is provided below:
+
+```
+entbal(
+  formula,
+  data = NULL,
+  eb_pars = list(exp_type = "binary", n_moments = 3, max_iters = 1000, verbose = FALSE,
+    optim_method = "L-BFGS-B"),
+  suppress_warnings = F
+)
+```
+
+The exact usage of the function may be more apparent later in the examples.  
+
+##### _Overview of parameters needed for `eb_pars`_
+
+The variable that will be of most interest to users is the `ep_pars` variable that is input to `entbal`.  This sets the parameters for the entropy balancing optimization, defines the exposure types, and other various settings necessary.  Note that a script is run at the beginning of `entbal` that attempts to diagnose issues with inputs to `eb_pars`.  These warnings can be suppressed by setting `suppress_warnings` to `TRUE`.  
+
+The inputs to `eb_pars` that are necessary for any exposure type are: 
+
+| Variable Name  | Description/Options                                               | 
+| -------------- | ----------------------------------------------------------------- |
+| `exp_type`     | Exposure type. Choose `binary`, `multi`, or `continuous`.  If no  |
+|                | exposure type is chosen, the function attempts to set this using  | 
+|                | simple rules.  It is best to set this option though               |
+| `n_moments`    | Number of moments to balance in the optimization. Defaults to 3.  |
+|                | We do not recommend numbers higher than 4 and typically 2 or 3 is sufficient. |
+|                | Increasing this typically decreases the effective size. |
+| `optim_method` | Optimization method.  Defaults to `L-BFGS-B`, i.e.,               |
+|                | Limited memory BFGS algorithm with bounding constraints. This      |
+|                | method allows for setting bounding constraints that ensure that   |
+|                | the objective does not overflow.  The other acceptable input is `BFGS`. |
+| `max_iters`    | Maximum number of iterations of the optimization routine.  Default to `1000` |
+| `verbose`      | Logical on whether the optimization should print information to the | 
+|                | screen.  The default is `FALSE`, i.e., no printing                | 
+
+Based on values of the above variables, additional inputs may be necessary 
+
+| Variable Name     | Condition, Description/ Options                                   |
+| ----------------- | ----------------------------------------------------------------- |
+| `estimand`        | **Condition**: If `exp_type == "binary"` or `exp_type == "multi"`  |  
+|                   | Estimand of interest that constructs targets to reweight the data | 
+|                   | to.  For the average treatment effect in the population (ATE), set | 
+|                   | the `estimand = "ATE"`.  For the average effect on the treated (ATT) | 
+|                   | set `estimand = "ATT"` or for the effect on the control `estimand = "ATC"`, |
+|                   | when the exposure is binary.  When the exposure is `multi` set  |
+|                   | `estimand = "ATZ"`.                                               |
+| `which_z`         | **Condition**: If `estimand == "ATT"`, `estimand == "ATC"` or `estimand == "ATZ"`. |
+|                   |  Defines the baseline, or referent, group                        |
+| `bal_tol`         | **Condition**: If `optim_method == "L-BFGS-B"`                   |
+|                   | Defines a tolerance on the gradient of the optimization.  The gradient |
+|                   | directly relates to the balance conditions.                      |
+| `opt_constraints` | **Condition**: If `optim_method == "L-BFGS-B"`                   |
+|                   | Bounding constraints on the parameters.  Defaults to `c(-100,100)` | 
+|                   | Changing these values should only be explored if there are convergence |
+|                   | issues, or if balance cannot be attained.                        |
+
+Finally, another feature in development is the use of response indicators that can handle non-response, or loss to follow up.  This can be set in `eb_pars` as follows:
+
+| Variable Name     | Condition, Description/ Options                                   |
+| ----------------- | ----------------------------------------------------------------- |
+| `R`               | **Condition**: If `exp_type == "binary"` or `exp_type == "multi"` |  
+|                   | Binary vector of indicators as to whether an observations response is |
+|                   | observed or not.  
+
+## Binary Exposures
+
+##### _A Simple Example_
+
+
+Consider the following data-generating mechanism
+
+
+```{r, echo = T, eval = T}
+set.seed(2020)
+nobs <- 1000
+X1 <- rnorm(nobs); X2 <- rnorm(nobs); X3 <- rnorm(nobs);
+ps <- plogis(3 * X1 - 0.75 * (X2 - 0.5)^2 +  2 * X3 +  X2 * X3 + 0.75)
+TA <- rbinom(nobs, 1, ps)
+dat <- data.frame(TA, X1, X2, X3)
+```
+
+We can visualize the marginal distributions of the covariates (white histograms) as well as the conditional distributions of covariates given the exposure assignement.  We see that the effect of non-equal probablity is two distributions that are some distance apart, and that neither looks like the marginal distribution where we hope to perform inference (the marginal distribution).  The second row of the figure demonstrates empirical cumulative distribution functions in each conditional distribution as well and provides the true marginal distribution (black line).  Again these demonstrate that there differences in the distributions of the covariates in each exposure group and neither is similar to the population that we hope to perform inference in. 
+
+```{r, eval = T, echo = F, fig.width = 12, fig.height=4}
+brks <- seq(-4,4,length.out = 25)
+xpts <- seq(-4,4,length.out = 100)
+col_c <- function(x) rgb(0,0,0.75,x)
+col_t <- function(x) rgb(0.75,0,0,x)
+
+x1_0_ecdf <- ecdf(X1[TA==0])
+x1_1_ecdf <- ecdf(X1[TA==1])
+x2_0_ecdf <- ecdf(X2[TA==0])
+x2_1_ecdf <- ecdf(X2[TA==1])
+x3_0_ecdf <- ecdf(X1[TA==0])
+x3_1_ecdf <- ecdf(X1[TA==1])
+
+par(mfrow = c(2,3), oma = c(0,0,0,0), mar = c(4,4,2,2)+0.1)
+hist(X1, breaks = brks)
+hist(X1[TA==0],breaks = brks, add = T, col = col_c(0.5))
+hist(X1[TA==1],breaks = brks, add = T, col = col_t(0.5))
+hist(X2,breaks = brks)
+hist(X2[TA==0],breaks = brks, add = T, col = col_c(0.5))
+hist(X2[TA==1],breaks = brks, add = T, col = col_t(0.5))
+hist(X3,breaks = brks)
+hist(X3[TA==0],breaks = brks, add = T, col = col_c(0.5))
+hist(X3[TA==1],breaks = brks, add = T, col = col_t(0.5))
+legend('topright', c('Exposed', 'Control', 'Marginal'), fill = c(col_t(.5), col_c(.5), 'white'))
+plot(0, xlim = c(-4,4), ylim = c(0,1))
+lines(xpts, pnorm(xpts))
+lines(xpts, x1_0_ecdf(xpts), lwd = 3, col = col_c(0.75))
+lines(xpts, x1_1_ecdf(xpts), lwd = 3, col = col_t(0.75))
+plot(0, xlim = c(-4,4), ylim = c(0,1))
+lines(xpts, pnorm(xpts))
+lines(xpts, x2_0_ecdf(xpts), lwd = 3, col = col_c(0.75))
+lines(xpts, x2_1_ecdf(xpts), lwd = 3, col = col_t(0.75))
+plot(0, xlim = c(-4,4), ylim = c(0,1))
+lines(xpts, pnorm(xpts))
+lines(xpts, x3_0_ecdf(xpts), lwd = 3, col = col_c(0.75))
+lines(xpts, x3_1_ecdf(xpts), lwd = 3, col = col_t(0.75))
+```
+
+Similarly, for binary variables we can address this using a function in the `entbal` package called `baltable`.  Its usage is `baltable(Xmat, TA, wts = NULL, show_unweighted = T, n_digits = 3)`.  When we use this function on the original data we see the following:
+
+```{r, eval = T, echo = T}
+entbal::baltable(dat[,2:4], dat[,1])
+```
+
+In this table `MeanGroup0` and `MeanGroup1` are means in each group,  `SEGroup0` and `SEGroup1` are the estimated standard deviations in each group, the column labeled `StdDiffMeans` is the standardized difference in means calculated as
+$$
+\Delta_j = \frac{\bar X_{1j} - \bar X_{0j}}{\sqrt{\frac{1}{2}\left(s_{0j}^2 + s_{1j}^2\right)}}
+$$
+and column labeled `LogRatioSE` and is calculated as
+$$
+\Gamma_j = \log(s_{1j}) - \log(s_{0j})
+$$
+and the column labeled `MaxKS` is the
+
+```{r, eval = T, echo = T}
+ebp <- list('exp_type' = 'binary',
+            'n_moments' = 3, 
+            'estimand' = 'ATE',
+            'optim_method' = 'L-BFGS-B',
+            'max_iters' = 1000,
+            'bal_tol' = 1e-6,
+            'verbose' = T)
+ebmod <- entbal(TA ~ X1 + X2 + X3, 
+                data = dat, 
+                eb_pars = ebp)
+```
+
+
+```{r, eval = T, echo = T}
+summary(ebmod)
+```
+
+```{r, fig.width=10, fig.height=4}
+plot(ebmod, which_vars = c(1,2,3))
+
+```
+
+
+## Multi-leveled Exposures
+
+## Continuous Exposures
+
+## Conclusion
+
+ 
