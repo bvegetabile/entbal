@@ -210,10 +210,9 @@ make_Xmat <- function(X, m = 1){
     }
   } else {
     cont_var <- .find_continuous(X)
-    X_con <- X[, cont_var]
+    X_con <- as.matrix(X[, cont_var])
     NC <- ncol(X_con)
-    X_bin <- X[, !cont_var]
-    # Xout <- cbind(X_bin, X_con)
+    X_bin <- as.matrix(X[, !cont_var])
     Xout <- cbind(X_bin)
     if(m > 1){
       for(i in 1:NC){
