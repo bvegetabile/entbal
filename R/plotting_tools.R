@@ -1,3 +1,5 @@
+#' @method plot entbal_binary
+#' @export
 plot.entbal_binary <- function(obj,
                                which_vars = 1,
                                plot_unweighted = TRUE){

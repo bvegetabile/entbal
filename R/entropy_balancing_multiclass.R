@@ -55,7 +55,7 @@ entbal_mc <- function(formula,
         XZ <- Xmat[ta == z & R == 1, ]
         mf$wts[R==0] <- 0
       }
-      wtsZ <- entbal_fit(XZ, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
+      wtsZ <- entbal_fit(XZ, targets, n_moments, max_iters, verbose, optim_method, bal_tol)
       conv_status_z <- wtsZ$optim_obj$convergence
       conv_status <- ifelse(conv_status_z ==0, T, F)
       all_converged <- conv_status & all_converged
@@ -88,7 +88,7 @@ entbal_mc <- function(formula,
         mf$wts[ta == z] <- 1
       } else {
         XZ <- Xmat[ta == z, ]
-        wtsZ <- entbal_fit(XZ, targets, n_moment, max_iters, verbose, optim_method, bal_tol)
+        wtsZ <- entbal_fit(XZ, targets, n_moments, max_iters, verbose, optim_method, bal_tol)
         conv_status_z <- wtsZ$optim_obj$convergence
         conv_status <- ifelse(conv_status_z ==0, T, F)
         all_converged <- conv_status & all_converged

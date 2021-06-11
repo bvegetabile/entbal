@@ -9,7 +9,7 @@ Description: An alternative implementation of entropy balancing weights.  See
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.1
 Suggests:
     survey,
     knitr,

@@ -1,7 +1,15 @@
+# entbal_wts <- function(Q, C, Z){
+#   norm_c <- Q %*% exp( - C %*% Z )
+#   Q * exp( - C %*% Z ) / c(norm_c)
+# }
+
 entbal_wts <- function(Q, C, Z){
-  norm_c <- Q %*% exp( - C %*% Z )
-  Q * exp( - C %*% Z ) / c(norm_c)
+  V <- - C %*% Z
+  maxV <- max(V)
+  norm_c <- Q %*% exp( V - maxV )
+  Q * exp( V - maxV ) / c(norm_c)
 }
+
 
 entbal_fit <- function(C, targets,
                        n_moments = 2,
@@ -16,7 +24,9 @@ entbal_fit <- function(C, targets,
   n_targets <- length(M)
 
   loss_func0 <- function(f){
-    loss <- log(t(Q) %*% exp( - C %*% f )) + t(M) %*% f
+    XS = - C %*% f
+    maxXS = max(XS)
+    loss <- maxXS + log(t(Q) %*% exp( XS - maxXS)) + t(M) %*% f
     return(loss)
   }
 

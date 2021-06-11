@@ -1,8 +1,22 @@
-extract_wts <- function(obj){
-  if(!(class(obj) %in% c("entbal_multiclass", "entbal_binary"))) stop('Works with objects of class : "entbal_multiclass", "entbal_binary"')
-  obj$wts
+#' Returns Object Weights
+#'
+#' @param object object of class \code{entbal_multiclass} or \code{entbal_binary}
+#'
+#' @export
+extract_wts <- function(object){
+  if(!(class(object) %in% c("entbal_multiclass", "entbal_binary"))) stop('Works with objects of class : "entbal_multiclass", "entbal_binary"')
+  object$wts
 }
 
+#' Binary Balance Table
+#'
+#' @param X Matrix of covariates
+#' @param TA Binary indicator
+#' @param wts Weights
+#' @param show_unweighted Show unweighted balanced statistics? default \code{TRUE}
+#' @param n_digits How many digits to round table, default 2
+#'
+#' @export
 print_baltables <- function(X, TA, wts, show_unweighted=TRUE, n_digits = 2){
   cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
   balance_table <- entbal::baltable(as.matrix(X), TA, n_digits=n_digits)
@@ -41,44 +55,46 @@ print_baltables <- function(X, TA, wts, show_unweighted=TRUE, n_digits = 2){
                  'ESS' = ESS))
 }
 
-
-summary.entbal_binary <- function(obj, show_unweighted = TRUE, n_digits=2){
+#' @method summary entbal_binary
+#' @export
+summary.entbal_binary <- function(object, show_unweighted = TRUE, n_digits=2){
 
   cat('Reference levels for headers:\n')
   cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
-  if(is.factor(obj$TA)){
-    ta_lvls <- levels(obj$TA)
-    ta_ind <- ifelse(obj$TA == obj$eb_pars$which_z,1,0)
-    cat(paste('Exposure 0:', ta_lvls[ta_lvls != obj$eb_pars$which_z], '\n'))
-    cat(paste('Exposure 1:', obj$eb_pars$which_z, '\n'))
+  if(is.factor(object$TA)){
+    ta_lvls <- levels(object$TA)
+    ta_ind <- ifelse(object$TA == object$eb_pars$which_z,1,0)
+    cat(paste('Exposure 0:', ta_lvls[ta_lvls != object$eb_pars$which_z], '\n'))
+    cat(paste('Exposure 1:', object$eb_pars$which_z, '\n'))
   } else {
-    ta_lvls <- unique(obj$TA)
-    ta_ind <- ifelse(obj$TA == min(ta_lvls), 0, 1)
+    ta_lvls <- unique(object$TA)
+    ta_ind <- ifelse(object$TA == min(ta_lvls), 0, 1)
     cat(paste('Exposure 0:', min(ta_lvls), '\n'))
     cat(paste('Exposure 1:', max(ta_lvls), '\n'))
   }
 
-
-  outtab <- print_baltables(as.matrix(obj$X),
+  outtab <- print_baltables(as.matrix(object$X),
                             ta_ind,
-                            obj$wts,
+                            object$wts,
                             show_unweighted=show_unweighted,
                             n_digits=n_digits)
 
 }
 
-summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2){
-  estimand <- obj$eb_pars$estimand
-  ta_lvls <- unique(obj$TA)
+#' @method summary entbal_multiclass
+#' @export
+summary.entbal_multiclass <- function(object, show_unweighted = TRUE, n_digits = 2){
+  estimand <- object$eb_pars$estimand
+  ta_lvls <- unique(object$TA)
   NT <- length(ta_lvls)
 
-  if(is.null(ncol(obj$X))) obj$X <- matrix(obj$X, ncol = 1)
+  if(is.null(ncol(object$X))) object$X <- matrix(object$X, ncol = 1)
 
-  outsum1 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * (NT+1))
-  balsum1 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * NT)
+  outsum1 <- matrix(NA, nrow = ncol(object$X), ncol = 2 * (NT+1))
+  balsum1 <- matrix(NA, nrow = ncol(object$X), ncol = 2 * NT)
 
-  outsum2 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * (NT+1))
-  balsum2 <- matrix(NA, nrow = ncol(obj$X), ncol = 2 * NT)
+  outsum2 <- matrix(NA, nrow = ncol(object$X), ncol = 2 * (NT+1))
+  balsum2 <- matrix(NA, nrow = ncol(object$X), ncol = 2 * NT)
 
   orig_N <- rep(NA, NT)
   esssum <- rep(NA, NT)
@@ -89,18 +105,18 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
   colnames(outsum2) <- c('Mean', 'SD', paste(c('M:', 'SD:'), rep(ta_lvls,each=2),sep=''))
   colnames(balsum1) <- c(paste(c('M:', 'SD:'), rep(ta_lvls,each=2),sep=''))
   colnames(balsum2) <- c(paste(c('M:', 'SD:'), rep(ta_lvls,each=2),sep=''))
-  rownames(outsum1) <- colnames(obj$X)
-  rownames(outsum2) <- colnames(obj$X)
-  rownames(balsum1) <- colnames(obj$X)
-  rownames(balsum2) <- colnames(obj$X)
+  rownames(outsum1) <- colnames(object$X)
+  rownames(outsum2) <- colnames(object$X)
+  rownames(balsum1) <- colnames(object$X)
+  rownames(balsum2) <- colnames(object$X)
 
   if(estimand == 'ATE'){
-    target_means <- apply(obj$X, 2, mean)
-    target_stddv <- apply(obj$X, 2, sd)
+    target_means <- apply(object$X, 2, mean)
+    target_stddv <- apply(object$X, 2, sd)
   } else{
-    ref_z <- obj$eb_pars$which_z
-    target_means <- apply(obj$X[obj$TA == ref_z,], 2, mean)
-    target_stddv <- apply(obj$X[obj$TA == ref_z,], 2, sd)
+    ref_z <- object$eb_pars$which_z
+    target_means <- apply(object$X[object$TA == ref_z,], 2, mean)
+    target_stddv <- apply(object$X[object$TA == ref_z,], 2, sd)
   }
 
   outsum1[,1] <- target_means
@@ -108,13 +124,13 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
   outsum2[,1] <- target_means
   outsum2[,2] <- target_stddv
   for(i in 1:NT){
-    ta <- obj$TA == ta_lvls[i]
+    ta <- object$TA == ta_lvls[i]
     nt <- sum(ta)
-    group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, obj$wts))
-    group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, obj$wts)))
+    group_means <- apply(object$X, 2, function(x) wtd_mean(x, ta, object$wts))
+    group_stddv <- sqrt(apply(object$X, 2, function(x) wtd_sd2(x, ta, object$wts)))
 
-    uw_group_means <- apply(obj$X, 2, function(x) wtd_mean(x, ta, ta))
-    uw_group_stddv <- sqrt(apply(obj$X, 2, function(x) wtd_sd2(x, ta, ta)))
+    uw_group_means <- apply(object$X, 2, function(x) wtd_mean(x, ta, ta))
+    uw_group_stddv <- sqrt(apply(object$X, 2, function(x) wtd_sd2(x, ta, ta)))
 
     outsum1[, 2*i + 1] <- uw_group_means
     outsum1[, 2*i + 2] <- uw_group_stddv
@@ -126,7 +142,7 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
     balsum2[, 2*i - 1] <- (group_means - target_means) / target_stddv
     balsum2[, 2*i] <- log(target_stddv) - log(group_stddv)
 
-    esssum[i] <- group_ESS(obj$wts, ta)
+    esssum[i] <- group_ESS(object$wts, ta)
     orig_N[i] <- nt
   }
 
@@ -171,7 +187,14 @@ summary.entbal_multiclass <- function(obj, show_unweighted = TRUE, n_digits = 2)
                  'original_N' = orig_N))
 }
 
-
+#' Weighted KS Statistic
+#'
+#' @param X covariate vector
+#' @param TA treatment indicator
+#' @param wts weights
+#' @param n_pts number of points to evaluate weighted ecdf
+#'
+#' @export
 ks_test <- function(X, TA, wts=rep(1,length(X)), n_pts=100){
   xmin <- min(X)
   xmax <- max(X)
@@ -183,19 +206,16 @@ ks_test <- function(X, TA, wts=rep(1,length(X)), n_pts=100){
   return(max(abs(t_fn(int_pts) - c_fn(int_pts))))
 }
 
-ks <- function(x,z,w) {
-  w[z==1] <-  w[z==1]/sum(w[z==1])
-  w[z==0] <- -w[z==0]/sum(w[z==0])
-  ind <- order(x)
-  cumv <- abs(cumsum(w[ind]))
-  cumv <- cumv[diff(x[ind]) != 0]
-  return(ifelse(length(cumv) > 0, max(cumv), 0))
-}
-
 .n_uniq <- function(x){length(unique(x))}
 
 .find_continuous <- function(X){apply(as.matrix(X), 2, .n_uniq) > 2}
 
+#' Make Design Matrix for Binary/Multiclass Entropy Balancing
+#'
+#' @param X matrix of covariates to balance
+#' @param m number of moments
+#'
+#' @export
 make_Xmat <- function(X, m = 1){
   if(is.null(ncol(X))){
     if(length(length(unique(X))) == 2){
@@ -230,12 +250,6 @@ make_Xmat <- function(X, m = 1){
   Xout
 }
 
-group_ESS <- function(w, TA){
-  ESSG <- sum(w * TA)^2 / sum(w^2 * TA)
-  ESSG
-}
-
-
 
 #' Calculate covariate balance statistics
 #'
@@ -245,8 +259,8 @@ group_ESS <- function(w, TA){
 #' @param show_unweighted Query if the the balance table should contain unweighted estimates
 #' @param n_digits Number of digits to print for the table
 #' @return A table of covariate balance statistics
-#' @examples
 #'
+#' @export
 baltable <- function(Xmat, TA,
                      wts = NULL,
                      show_unweighted=T,

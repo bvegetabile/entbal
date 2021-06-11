@@ -1,3 +1,9 @@
+#' Weighted ECDF
+#'
+#' @param var_data vector of variable data
+#' @param wts vector of weights
+#'
+#' @export
 wtd_ecdf <- function (var_data, wts) {
   #-----------------------------------------------------------------------------
   # wtd_ecdf is a modification of the ecdf() function in base R.  It modifies

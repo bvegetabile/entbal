@@ -185,7 +185,7 @@
 #'   \item{\code{verbose}}: logical for if the optimization should print information to the screen
 #'   \item{\code{optim_method}}: Choose \code{L-BFGS-B} or \code{BFGS}.  Recommendation is \code{L-BFGS-B}
 #' }
-#' The function will attempt to set values to default values if variables are not specified and provide warnings when necessary. To ignore these warnings set the \code{suppress_warnings} variable to \code{T}.
+#' The function will attempt to set values to default values if variables are not specified and provide warnings when necessary. To ignore these warnings set the \code{suppress_warnings} variable to \code{TRUE}.
 #'
 #' For \code{exp_type = 'binary'} or \code{exp_type = 'multi'} the following variables should also be set
 #'
@@ -229,21 +229,21 @@
 #'                   'n_moments' = 3,
 #'                   'max_iters' = 1000,
 #'                   'estimand' = 'ATC',
-#'                   'verbose' = F,
+#'                   'verbose' = FALSE,
 #'                   'optim_method' = 'l-bfgs-b',
 #'                   'bal_tol' = 1e-8,
 #'                   'opt_constraints' = c(-1000,1000),
 #'                   'which_z' = 'A')
-#' Q <- entbal_dev(A ~ X1 + X2,
-#'                 data = D,
-#'                 eb_pars = par_list,
-#'                 suppress_warnings = F)
+#' Q <- entbal(A ~ X1 + X2,
+#'             data = D,
+#'             eb_pars = par_list,
+#'             suppress_warnings = FALSE)
 #' out1 <- summary(Q)
 #'
 #' # ---------------------------------------------------------------------------
 #' # Multi-valued exposure - ATZ Example
 #'
-#' C <- sample(1:3, n_obs, replace = T)
+#' C <- sample(1:3, n_obs, replace = TRUE)
 #' X1 <- NA
 #' X1[C == 1] <- rnorm(sum(C==1), mean = -0.5, sd = 3)
 #' X1[C == 2] <- rnorm(sum(C==2), mean = 0, sd = 3)
@@ -255,14 +255,14 @@
 #'                   'n_moments' = 3,
 #'                   'max_iters' = 1000,
 #'                   'estimand' = 'ATZ',
-#'                   'verbose' = F,
+#'                   'verbose' = FALSE,
 #'                   'optim_method' = 'l-bfgs-b',
 #'                   'bal_tol' = 1e-8,
 #'                   'opt_constraints' = c(-1000,1000),
 #'                   'which_z' = 3)
 #'
 #'
-#' P <- entbal_dev(C ~ X1 + X2, data = D, eb_pars = par_list, suppress_warnings = F)
+#' P <- entbal(C ~ X1 + X2, data = D, eb_pars = par_list, suppress_warnings = FALSE)
 #' out2 <- summary(P)
 #'
 #' # ---------------------------------------------------------------------------
@@ -273,26 +273,29 @@
 #' G <- rnorm(n_obs, mean = X1 - X2)
 #' D <- data.frame(G, X1, X2)
 #'
-#' par_list <-  list(#'exp_type' = 'continuous',
-#'   'n_moments' = 3,
-#'   'max_iters' = 1000,
-#'   'estimand' = 'ATE',
-#'   'verbose' = T,
-#'   'optim_method' = 'l-bfgs-b',
-#'   'bal_tol' = 1e-8,
-#'   'opt_constraints' = c(-1000,1000))
+#' par_list <-  list('exp_type' = 'continuous',
+#'                   'n_moments' = 3,
+#'                   'max_iters' = 1000,
+#'                   'estimand' = 'ATE',
+#'                   'verbose' = TRUE,
+#'                   'optim_method' = 'l-bfgs-b',
+#'                   'bal_tol' = 1e-8,
+#'                   'opt_constraints' = c(-1000,1000))
 #'
 #'
-#' O <- entbal_dev(G ~ X1 + X2, data = D, eb_pars = par_list, suppress_warnings = F)
-#' out3 <- summary(O, show_parameters = T)
-#
-
+#' O <- entbal(G ~ X1 + X2, data = D, eb_pars = par_list, suppress_warnings = FALSE)
+#' out3 <- summary(O, show_parameters = TRUE)
+#'
+#' @export
 entbal <- function(formula,
                    data = NULL,
                    eb_pars = list('exp_type' = 'binary',
                                   'n_moments' = 3,
                                   'max_iters' = 1000,
                                   'verbose' = FALSE,
+                                  'bal_tol' = 0.00001,
+                                  'opt_constraints' = c(-100,100),
+                                  'estimand' = 'ATE',
                                   'optim_method' = 'L-BFGS-B'),
                    suppress_warnings = F){
 
@@ -319,7 +322,6 @@ entbal <- function(formula,
   } else {
     eb_pars <- .check_pars(eb_pars, n_classes, n_obs, uniq_ta)
   }
-
 
   if(eb_pars$exp_type == 'binary' | eb_pars$exp_type == 'multi'){
 

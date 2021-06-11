@@ -1,3 +1,10 @@
+#' Make Design Matrix for Continuous Entropy Balancing
+#'
+#' @param XD matrix of covariates to balance
+#' @param A vector of treatments
+#' @param n_moments number of moments
+#'
+#' @export
 makeC2 <- function(XD, A, n_moments = 3){
   if(is.null(ncol(XD))) {
     XD <- matrix(XD, ncol = 1)

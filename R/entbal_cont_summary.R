@@ -1,19 +1,21 @@
 
-summary.entbal_cont <- function(obj,
+#' @method summary entbal_cont
+#' @export
+summary.entbal_cont <- function(object,
                                 show_unweighted = TRUE,
                                 show_higherorder = TRUE,
                                 show_parameters = FALSE,
                                 n_digits = 3){
 
-  if(is.null(ncol(obj$X))) {
-    obj$X <- matrix(obj$X, ncol =1)
-    colnames(obj$X)[1] <- c('cov')
+  if(is.null(ncol(object$X))) {
+    object$X <- matrix(object$X, ncol =1)
+    colnames(object$X)[1] <- c('cov')
   }
 
-  CB_unwtd <- cbind(apply(obj$X, 2, mean),
-                    apply(obj$X, 2, sd),
-                    apply(obj$X, 2, function(x) cor(x, obj$TA)),
-                    t(apply(obj$X, 2, function(x) summary(lm(x ~ scale(obj$TA)))$coef[2,c(1,3,4)])))
+  CB_unwtd <- cbind(apply(object$X, 2, mean),
+                    apply(object$X, 2, sd),
+                    apply(object$X, 2, function(x) cor(x, object$TA)),
+                    t(apply(object$X, 2, function(x) summary(lm(x ~ scale(object$TA)))$coef[2,c(1,3,4)])))
   colnames(CB_unwtd) <- c('Mean',
                           'SD',
                           'Cor.',
@@ -21,11 +23,11 @@ summary.entbal_cont <- function(obj,
                           'tval',
                           'pval')
 
-  CB_wtd <- cbind(apply(obj$X, 2, function(x) wmean(obj$wts, x)),
-                  apply(obj$X, 2, function(x) sqrt(wvar(obj$wts, x))),
-                  apply(obj$X, 2, function(x) wcor(obj$wts, x, obj$TA)),
-                  t(apply(obj$X, 2, function(x) .lm_ps(x, obj$TA, obj$wts)[2,c(1,3,4)])),
-                  apply(obj$X, 2, function(x) .ksbal(x, obj$wts)))
+  CB_wtd <- cbind(apply(object$X, 2, function(x) wmean(object$wts, x)),
+                  apply(object$X, 2, function(x) sqrt(wvar(object$wts, x))),
+                  apply(object$X, 2, function(x) wcor(object$wts, x, object$TA)),
+                  t(apply(object$X, 2, function(x) .lm_ps(x, object$TA, object$wts)[2,c(1,3,4)])),
+                  apply(object$X, 2, function(x) .ksbal(x, object$wts)))
   colnames(CB_wtd) <- c('wtd-Mean',
                         'wtd-SD',
                         'wtd-Cor.',
@@ -50,8 +52,8 @@ summary.entbal_cont <- function(obj,
   print(round(CB_wtd, digits = n_digits))
   cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
 
-  orig_N <- nrow(obj$X)
-  esssum <- 1/sum(obj$wts^2)
+  orig_N <- nrow(object$X)
+  esssum <- 1/sum(object$wts^2)
 
   cat('Original & Effective Sample Sizes:\n')
   cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
@@ -64,8 +66,8 @@ summary.entbal_cont <- function(obj,
     cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
     cat('Parameter Values from Optimization:\n')
     cat(paste(paste(rep('-', 80), collapse = ''), '\n', sep=''))
-    pars <- obj$opt_obj$par
-    check_vals <- pars %in% obj$constraints
+    pars <- object$opt_obj$par
+    check_vals <- pars %in% object$constraints
     pars <- data.frame('Value' = round(pars, digits = n_digits),
                        'Saturated' = check_vals)
     print(pars[order(abs(pars$Value), decreasing = T),])

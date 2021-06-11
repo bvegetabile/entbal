@@ -23,6 +23,3 @@ A table of covariate balance statistics
 \description{
 Calculate covariate balance statistics
 }
-\examples{
-
-}
