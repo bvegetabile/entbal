@@ -29,6 +29,7 @@ ebpars_default_binary <- function(estimand = 'ATE',
 ebpars_default_multi <- function(estimand = 'ATE',
                                   which_z = NULL){
   outlist <- ebpars_default_binary(estimand, which_z)
+  outlist$exp_type <- 'multi'
   outlist
 }
 
